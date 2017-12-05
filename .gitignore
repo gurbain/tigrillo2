@@ -1,0 +1,10 @@
+# Catkin folders
+.catkin_workspace
+build/*
+devel/*
+
+# Result files
+data/results/*
+
+# Python compiled files
+*.pyc

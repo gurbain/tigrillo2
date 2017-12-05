@@ -1,0 +1,19 @@
+#! /usr/bin/env python
+
+__author__ = "Gabriel Urbain" 
+__copyright__ = "Copyright 2017, Human Brain Projet, SP10"
+
+__license__ = "MIT" 
+__version__ = "2.0" 
+__maintainer__ = "Gabriel Urbain"
+__email__ = "gabriel.urbain@ugent.be" 
+__status__ = "Research" 
+__date__ = "December 4th, 2017"
+
+from tigrillo_io.uart_ros import *
+
+
+if __name__ == "__main__":
+
+    uartros = UARTROS(uart_port="/dev/ttyS0", uart_baud=921600, pub_freq=50)
+    uartros.start()

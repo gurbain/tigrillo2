@@ -1,0 +1,19 @@
+#! /usr/bin/env python
+
+__author__ = "Gabriel Urbain" 
+__copyright__ = "Copyright 2017, Human Brain Projet, SP10"
+
+__license__ = "MIT" 
+__version__ = "2.0" 
+__maintainer__ = "Gabriel Urbain"
+__email__ = "gabriel.urbain@ugent.be" 
+__status__ = "Research" 
+__date__ = "December 5th, 2017"
+
+import tigrillo_io
+from tigrillo_io.i2c_ros import *
+
+if __name__ == "__main__":
+
+    i2cros = I2CROS(i2c_rst_pin="18", i2c_calib_file=tigrillo_io.utils.I2C_CALIB_FILE, pub_freq=50)
+    i2cros.start()
