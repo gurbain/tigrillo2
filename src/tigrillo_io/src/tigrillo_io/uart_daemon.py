@@ -1,5 +1,3 @@
- 
-
 """
 This file contains all other methods
 """
@@ -33,13 +31,17 @@ class UARTDaemon(threading.Thread):
     data in a buffer for asynchronous usage
     """
 
-    def __init__(self, port, baud):
+    def __init__(self, ser_port, ser_baud, usb_port, usb_baud):
 
         super(UARTDaemon, self).__init__()
 
-        self.port = port
-        self.baud = baud
-        self.conn = None
+        self.usb_port = usb_port
+        self.usb_baud = usb_baud
+        self.usb_conn = None
+
+        self.ser_port = ser_port
+        self.ser_baud = ser_baud
+        self.ser_conn = None
 
         self.data_buffer = deque([])
         self.ack_buffer = deque([])
@@ -51,9 +53,13 @@ class UARTDaemon(threading.Thread):
     def start(self):
         """ Initialize and configure serial port """
 
-        self.conn = serial.Serial(self.port, self.baud)
-        if not self.conn.isOpen():
-            self.conn.open()
+        self.ser_conn = serial.Serial(self.ser_port, self.ser_baud)
+        self.usb_conn = serial.Serial(self.usb_port, self.usb_baud)
+        if not self.ser_conn.isOpen():
+            self.ser_conn.open()
+
+        if not self.usb_conn.isOpen():
+            self.usb_conn.open()
 
         self.stop = False
         super(UARTDaemon, self).start()
@@ -62,7 +68,8 @@ class UARTDaemon(threading.Thread):
         """ Raise a stop flag to stop the daemon """
 
         self.stop = True
-        self.conn.close()
+        self.ser_conn.close()
+        self.usb_conn.close()
 
     def _add_data(self, data):
         """ Add a data line in the uart buffer """
@@ -84,6 +91,10 @@ class UARTDaemon(threading.Thread):
 
     def _add_ack(self, ack):
         """ Add a ack line in the uart buffer """
+
+        if ack["Instruction"] == 'A':
+            if not "success" in ack["Data"].lower():
+                ros.logerr("Arg, data not received!")
 
         # TODO: PRINT IF ACK FAILED
         self.ack_buffer.append(ack)
@@ -127,17 +138,16 @@ class UARTDaemon(threading.Thread):
     def write(self, line):
         """ Write a line in the uart channel"""
 
-        self.conn.write(line)
-        self.conn.flush()
+        self.usb_conn.write(line)
 
     def run(self):
         """ Read and populate the buffer"""
 
         while not self.stop:
-            line = self.conn.readline()
+            line = self.ser_conn.readline()
             dico = dict()
             try:
-                dico = ast.literal_eval(line)
+                dico = ast.literal_eval(str(line))
             except SyntaxError or ValueError or TypeError:
                 ros.logwarn("Malformed UART packet. Ignoring line: " + str(line))
                 pass
@@ -154,7 +164,8 @@ class UARTDaemon(threading.Thread):
 
 if __name__ == "__main__":
 
-    uart = UARTDaemon("/dev/ttyS0", 57600)
+    uart = UARTDaemon(ser_port="/dev/ttyS0", ser_baud=921600, usb_port="/dev/ttyACM0", usb_baud=9600)
     uart.start()
-    uart.write("F50000\n\r")
-    time.sleep(20)
+    uart.write("F50000")
+    time.sleep(2)
+    print uart.read_f_ack()

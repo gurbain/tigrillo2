@@ -115,7 +115,8 @@ class I2CROS():
         self.i2c_rst_pin = i2c_rst_pin
         self.i2c_calib_file = i2c_calib_file
 
-        self. runtime = 0
+        self.date_zero_s = None
+        self.date_zero_a = None
 
         if save_all:
             if data_folder is None:
@@ -136,9 +137,12 @@ class I2CROS():
     def get_last_sensors(self):
 
         measure = self.sensors.getMeasure()
+        nows = datetime.datetime.now()
+        if self.date_zero_s is None:
+            self.date_zero_s = nows.minute*60 + nows.second + nows.microsecond/1000000.0
+        measure["Run Time"] = str(nows.minute*60 + nows.second + nows.microsecond/1000000.0 - self.date_zero_s)
 
         if self.save_all:
-            measure["Run Time"] = self.runtime
             utils.save_csv_row(measure, self.file_s, self.sensors_index)
 
         self.sensors_index += 1
@@ -154,7 +158,6 @@ class I2CROS():
             rate = ros.Rate(self.pub_rate)
             measure = self.get_last_sensors()
             self.pub.publish(json.dumps(measure))
-            self.runtime = str(datetime.datetime.now().strftime("%Ss%f"))
             rate.sleep()
 
         return

@@ -39,7 +39,6 @@ class UARTSensors:
 
         line = "F"
         line += str(period)
-        line += "\n\r"
         self.uart.write(line)
         time.sleep(0.02)
 
@@ -53,7 +52,7 @@ class UARTSensors:
 
     def resetCalib(self):
 
-        line = "R\n\r"
+        line = "R"
         self.uart.write(line)
         time.sleep(0.01)
 
@@ -71,6 +70,7 @@ class UARTSensors:
         if not measure:
             measure = dict()
             ros.loginfo("Cannot retrieve UART sensor data! Please increase sensor reading period!")
+        print measure
 
         return measure
 
@@ -91,13 +91,15 @@ class UARTActuators:
         line += str(int(update["FL"])) + ','
         line += str(int(update["FR"])) + ','
         line += str(int(update["BL"])) + ','
-        line += str(int(update["BR"])) + '\r\n'
+        line += str(int(update["BR"]))
         self.uart.write(line)
 
 
 class UARTROS():
 
-    def __init__(self, uart_port="/dev/ttyAMA0", uart_baud=921600, pub_freq=5, save_all=True, data_folder=None):
+
+    def __init__(self, ser_port="/dev/ttyS0", ser_baud=921600, usb_port="/dev/ttyACM0", usb_baud=9600, 
+                 pub_freq=5, save_all=True, data_folder=None):
 
         # ROS parameters
         self.node_name = "uartd"
@@ -108,8 +110,10 @@ class UARTROS():
         self.pub_rate = pub_freq
         self.queue_size = utils.ROS_QUEUE_SIZE
 
-        self.uart_baud = uart_baud
-        self.uart_port = uart_port
+        self.ser_baud = ser_baud
+        self.ser_port = ser_port
+        self.usb_baud = usb_baud
+        self.usb_port = usb_port
         self.save_all = save_all
         self.data_folder = data_folder
 
@@ -119,7 +123,8 @@ class UARTROS():
         self.actuators = None
         self.actuators_index = 0
 
-        self. runtime = 0
+        self.date_zero_s = None
+        self.date_zero_a = None
 
         if save_all:
             if data_folder is None:
@@ -131,7 +136,7 @@ class UARTROS():
     def start(self):
 
         # Setup and start uart daemon
-        self.uart = uart_daemon.UARTDaemon(self.uart_port, self.uart_baud)
+        self.uart = uart_daemon.UARTDaemon(self.ser_port, self.ser_baud, self.usb_port, self.usb_baud)
         self.uart.start()
 
         self.sensors = UARTSensors(self.uart)
@@ -146,7 +151,10 @@ class UARTROS():
     def get_last_sensors(self):
 
         measure = self.sensors.getMeasure()
-        measure["Run Time"] = self.runtime
+        nows = datetime.datetime.now()
+        if self.date_zero_s is None:
+            self.date_zero_s = nows.minute*60 + nows.second + nows.microsecond/1000000.0
+        measure["Run Time"] = str(nows.minute*60 + nows.second + nows.microsecond/1000000.0 - self.date_zero_s)
 
         if self.save_all:
             utils.save_csv_row(measure, self.file_s, self.sensors_index)
@@ -157,7 +165,10 @@ class UARTROS():
     def update_actuators(self, update):
 
         self.actuators.update(update)
-        update["Run Time"] = str(datetime.datetime.now().strftime("%Ss%f"))
+        nowa = datetime.datetime.now()
+        if self.date_zero_a is None:
+            self.date_zero_a = nowa.minute*60 + nowa.second + nowa.microsecond/1000000.0
+        update["Run Time"] = str(nowa.minute*60 + nowa.second + nowa.microsecond/1000000.0 - self.date_zero_a)
 
         if self.save_all:
             utils.save_csv_row(update, self.file_a, self.actuators_index)
@@ -183,7 +194,6 @@ class UARTROS():
             rate = ros.Rate(self.pub_rate)
             measure = self.get_last_sensors()
             self.pub.publish(json.dumps(measure))
-            self.runtime = str(datetime.datetime.now().strftime("%Ss%f"))
             rate.sleep()
 
         return
@@ -223,5 +233,5 @@ class UARTROS():
 
 if __name__ == "__main__":
 
-    uartros = UARTROS(uart_port="/dev/ttyS0", uart_baud=921600, pub_freq=10)
+    uartros = UARTROS(ser_port="/dev/ttyS0", ser_baud=921600, usb_port="/dev/ttyACM0", usb_baud=9600, pub_freq=10)
     uartros.start()
