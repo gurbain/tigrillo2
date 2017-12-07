@@ -69,14 +69,51 @@ def load_csv(path):
 
     return result
 
-def save_csv_row(dictionary, path, index):
+def save_csv_row(d, path, index):
     """ Save a dictionnary into one row of a csv file """
 
-    with open(path, 'a') as f:
-        w = csv.DictWriter(f, sorted(dictionary.keys()))
-        if index == 0:
+    dict_keys = sorted(d.keys())
+
+    # For the first time, use dictwriter
+    if index == 0 or os.stat(path).st_size == 0:
+        with open(path, 'wb') as f:
+            w = csv.DictWriter(f, dict_keys)
             w.writeheader()
-        w.writerow(dictionary)
+            w.writerow(d)
+
+    else:
+        # Read the header
+        with open(path, 'rb') as f:
+            r = csv.reader(f)
+            csv_keys = next(r)
+
+        # If there are some new keys, rewrite the header
+        if len(set(dict_keys) - set(csv_keys)) > 0:
+
+            with open(path) as inf, open('tmp', 'wb') as outf:
+                r = csv.reader(inf)
+                w = csv.writer(outf)
+                for i, line in enumerate(r):
+                    if i == 0:
+                        #print csv_keys
+                        csv_keys = csv_keys + sorted(set(dict_keys) - set(csv_keys))
+                        #print csv_keys
+                        w.writerow(csv_keys)
+                    else:
+                        w.writerow(line)
+            os.remove(path)
+            os.rename('tmp', path)
+
+        # Populate the last line with sorted values
+        with open(path, 'ab') as f:
+            w = csv.writer(f)
+            to_add = []
+            for k in csv_keys:
+                if k in dict_keys:
+                    to_add.append(d[k])
+                else:
+                    to_add.append("")
+            w.writerow(to_add)
 
 
 def dict_keys_to_str(dictionary):
@@ -170,3 +207,18 @@ def get_config_string(config):
         for (key, val) in config.items(sec):
             string += "\n" + key + "=" + val
     return string + "\n\n"
+
+
+
+if __name__ == "__main__":
+
+    f = "test.csv"
+    d = [{"a": 11, "b": 12, "e": 15}, {"a": 21, "c": 23, "b": 22}, 
+         {"a": 31, "c": 33}, {"a": 41, "b": 42, "d": 44}, 
+         {"a": 51, "b": 52, "c": 53, "d": 54}, {"a": 61, "c": 63, "d": 64}, 
+         {"b": 72, "c": 73, "b": 72, "d": 74}]
+
+    for i, e in enumerate(d):
+        t_i = time.time()
+        save_csv_row(e, f, i)
+        print "Iteration " + str(i) + " : " + str(time.time() - t_i) + "s"
