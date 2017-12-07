@@ -3,6 +3,7 @@ from tigrillo_io.srv import Frequency, FrequencyResponse
 import tigrillo_io
 from tigrillo_io import BNO055, utils
 
+import datetime
 import json
 import time
 
@@ -152,18 +153,22 @@ class I2CROS():
         while not ros.is_shutdown():
             rate = ros.Rate(self.pub_rate)
             measure = self.get_last_sensors()
-            ros.logdebug("Last I2C sensor measure: " + str(measure))
             self.pub.publish(json.dumps(measure))
-            self.runtime += 1.0/self.pub_rate
+            self.runtime = str(datetime.datetime.now().strftime("%Ss%f"))
             rate.sleep()
 
         return
 
     def __ros_freq_srv(self, msg):
 
-        self.pub_rate = msg.freq
-        ros.logwarn("I2C sensors frequency properly changed to " + str(msg.freq) + " Hz!")
-        return FrequencyResponse(True, "Success!")
+        if msg.freq > 0:
+            self.pub_rate = msg.freq
+            ros.logwarn("I2C sensors frequency properly changed to " + str(msg.freq) + " Hz!")
+            ack = {"success":True, "msg": "Success!"}
+        else:
+            ack = {"success": False, "msg": "Frequency format not supported: " + str(msg.freq)}
+
+        return FrequencyResponse(ack["success"], ack["msg"])
 
     def __ros_rst_srv(self, msg):
 

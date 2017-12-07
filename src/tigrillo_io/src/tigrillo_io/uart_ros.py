@@ -1,3 +1,5 @@
+
+import datetime
 import json
 import time
 
@@ -144,20 +146,20 @@ class UARTROS():
     def get_last_sensors(self):
 
         measure = self.sensors.getMeasure()
+        measure["Run Time"] = self.runtime
 
         if self.save_all:
-            measure["Run Time"] = self.runtime
             utils.save_csv_row(measure, self.file_s, self.sensors_index)
 
         self.sensors_index += 1
         return measure
 
-    def update_actuators(self, update, t_run):
+    def update_actuators(self, update):
 
         self.actuators.update(update)
+        update["Run Time"] = str(datetime.datetime.now().strftime("%Ss%f"))
 
         if self.save_all:
-            update["Run Time"] = t_run
             utils.save_csv_row(update, self.file_a, self.actuators_index)
 
         self.actuators_index += 1
@@ -173,25 +175,28 @@ class UARTROS():
 
     def __ros_sub(self, msg):
 
-        return 
+        self.update_actuators(utils.dict_keys_to_str(json.loads(msg.data)))
 
     def __ros_pub(self):
 
         while not ros.is_shutdown():
             rate = ros.Rate(self.pub_rate)
             measure = self.get_last_sensors()
-            ros.logdebug("Last UART sensor measure: " + str(measure))
             self.pub.publish(json.dumps(measure))
-            self.runtime += 1.0/self.pub_rate
+            self.runtime = str(datetime.datetime.now().strftime("%Ss%f"))
             rate.sleep()
 
         return
 
     def __ros_freq_srv(self, msg):
 
-        ack = self.set_sensor_period(0.99/float(msg.freq))
-        if ack["success"]:
-            self.pub_rate = msg.freq
+        if msg.freq > 0:
+            ack = self.set_sensor_period(0.99/float(msg.freq))
+            if ack["success"]:
+                self.pub_rate = msg.freq
+            ros.logdebug("UART Frequency changed with ack message:" + str(ack["msg"]))
+        else:
+            ack = {"success": False, "msg": "Frequency format not supported: " + str(msg.freq)}
         return FrequencyResponse(ack["success"], ack["msg"])
 
     def __ros_rst_srv(self, msg):
@@ -204,6 +209,7 @@ class UARTROS():
         ros.init_node(self.node_name, log_level=ros.INFO)
         self.pub = ros.Publisher(self.pub_name, String, queue_size=self.queue_size)
         self.sub = ros.Subscriber(self.sub_name, String, callback=self.__ros_sub, queue_size=self.queue_size)
+        
         self.srv_rst = ros.Service(self.srv_rst_name, Trigger, self.__ros_rst_srv)
         self.srv_freq = ros.Service(self.srv_freq_name, Frequency, self.__ros_freq_srv)
 

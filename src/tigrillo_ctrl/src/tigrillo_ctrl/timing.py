@@ -5,6 +5,7 @@ Provide tools for timing real-time and faster than real-time simulations
 from copy import copy
 import datetime
 import pause
+import rospy as ros
 
 __author__ = "Gabriel Urbain"
 __copyright__ = "Copyright 2017, Human Brain Project, SP10"
@@ -38,6 +39,9 @@ class Timer(object):
         self.print_dt = print_dt
         self.time_since_print = 0
 
+
+        self.rate = ros.Rate(1.0/self.sdt)
+
     def start(self):
         """ Start the real-time clock """
 
@@ -57,6 +61,16 @@ class Timer(object):
         new_st = self.st + self.sdt
         self.rdt = new_rt - self.rt
 
+        # If the real time is too slow for the simulation time
+        if (new_rt - self.rt_init).total_seconds() > (new_st - self.st_init) and (self.rdt.total_seconds() > self.sdt):
+            ros.logdebug('Warning: the last time step (' + str(self.rdt.total_seconds()) +
+                        ' s) is higher than the desired one (' + str(self.sdt) +
+                        ' s)! The last iteration finished at ' + str(self.ctrl_time.strftime("%S.%fs")) + 
+                        ' instead of the expected ' + str((self.rt_init + datetime.timedelta(seconds=self.st)).strftime("%S.%fs")))
+        
+        self.st = new_st
+        self.rt = new_rt
+
         # Print info with a given frequency
         if self.time_since_print < self.print_dt:
             self.time_since_print += self.sdt
@@ -64,36 +78,18 @@ class Timer(object):
             self.time_since_print = 0
             self.print_info()
 
-        # If the real time is too slow for the simulation time
-        if (new_rt - self.rt_init).total_seconds() > (new_st - self.st_init):
-            print('Warning: the real time step (' + str(self.rdt)
-                  + ') is higher than the desired one (' + str(self.sdt) +
-                  ')! Please decrease computation load (IO reading, controller,...) or increase the desired timestep')
-            self.st += self.rdt.total_seconds()
-            self.rt = new_rt
-
-        # If the real time is too fast for the simulation time
-        if (new_rt - self.rt_init).total_seconds() < (new_st - self.st_init):
-            self.st += self.sdt
-            self.rt = self.rt + datetime.timedelta(seconds=self.sdt)
-            pause.until(self.rt)
-
-        # If by chance they correspond
-        else:
-            self.st = new_st
-            self.rt = new_rt
-
         self.it += 1
+        self.rate.sleep()
+        self.ctrl_time = datetime.datetime.now()
 
     def print_info(self):
         """ Print info over timing and iterations number """
 
-        print("Epoch: " + str(self.it) + "/" + str(self.n_it) +
-              ";\tSimulated time: " + "%.2f" % self.st + "/" +  "%.2f" % self.st_end +
-              ";\tReal time: " + str(self.rt.strftime("%S.%f")[:-2]) + "/" + str(self.rt_end.strftime("%S.%f")[:-2]) +
-              ";  \tSim dt: " + str(self.sdt) + ";\tReal dt: " + str(self.rdt.total_seconds()))
+        ros.loginfo("Epoch: " + str(self.it) + "/" + str(self.n_it) +
+              " (sim time: " + "%.2f" % self.st + "/" +  "%.2f" % self.st_end +  ")\tReal dt = " + 
+              "%.4f" % self.rdt.total_seconds() + "s and Sim dt = " + "%.4f" % self.sdt + "s")
 
     def is_finished(self):
         """ Return a boolean set to True if the simulation is timer is over """
 
-        return (self.st > self.st_end) or (self.rt > self.rt_end)
+        return (self.st > self.st_end) or (self.rt > self.rt_end) or ros.is_shutdown()

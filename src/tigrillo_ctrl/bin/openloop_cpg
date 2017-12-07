@@ -1,5 +1,15 @@
 #! /usr/bin/env python
 
+import os
+import psutil
+import rospy as ros
+import sys
+import time
+
+import tigrillo_ctrl
+from tigrillo_ctrl import utils, control, timing, ctrl_ros
+
+
 __author__ = "Gabriel Urbain" 
 __copyright__ = "Copyright 2017, Human Brain Projet, SP10"
 
@@ -10,10 +20,47 @@ __email__ = "gabriel.urbain@ugent.be"
 __status__ = "Research" 
 __date__ = "December 5th, 2017"
 
-import tigrillo_ctrl
-import time
 
-if __name__ == "__main__":
+DEFAULT_CONFIG = utils.CONFIG_FOLDER + "/walk_ol.cfg"
 
-    while 1:
-    	time.sleep(1)
+
+if __name__ == '__main__':
+
+    # Retrieve config file
+    config = utils.retrieve_config(sys.argv, DEFAULT_CONFIG)
+
+    # Create and configure robot (by defaut: save actuators and sensors values)
+    rob = ctrl_ros.CTRLROS()
+    rob.start()
+
+    # Create a controller with config file
+    ctl = control.CPG(config)
+
+    # Initialise the other nodes
+    rob.set_sensors_frequency(int(1 / float(config["Controller"]["timestep"])))
+
+    # Create a Timer to ensure that simulation time goes at real-time
+    t = timing.Timer(real_time=True, runtime=float(config["Controller"]["runtime"]), dt=float(config["Controller"]["timestep"]))
+    t.start()
+
+    # Perform experiment
+    while not t.is_finished():
+
+        # Produce actuators control and update the robot
+        cmd = ctl.step(t.st)
+
+        # Update the robot actuators
+        update = {"FL": cmd[0] + 115, "FR": cmd[1] + 115, "BL": cmd[2] + 115, "BR": cmd[3] + 115}
+        rob.update_actuators(update, t.st)
+
+        # Get the last sensors
+        measure = rob.get_last_sensors()
+        print measure
+
+        # Update time and pause until the next time step
+        t.update()
+
+
+    # Terminate experiment
+    t.print_info()
+    ctl.plot("cpg.png")

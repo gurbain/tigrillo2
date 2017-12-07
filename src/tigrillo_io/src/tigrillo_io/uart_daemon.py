@@ -66,7 +66,6 @@ class UARTDaemon(threading.Thread):
 
     def _add_data(self, data):
         """ Add a data line in the uart buffer """
-        print "aaaaa"
 
         if "Previous Time Stamp" and "Time Stamp" and "End of Reading Time Stamp" in data:
             ts = float(data["Time Stamp"]) / 1000000
@@ -114,7 +113,6 @@ class UARTDaemon(threading.Thread):
     def read_f_ack(self):
         """ Read the last frequency ack line in the uart buffer """
 
-        print self.ack_buffer
         if self.ack_buffer:
             for a in self.ack_buffer:
                 if a["Instruction"] == 'F':
@@ -140,9 +138,12 @@ class UARTDaemon(threading.Thread):
             dico = dict()
             try:
                 dico = ast.literal_eval(line)
-            except SyntaxError or ValueError:
-                ros.logwarn("Malformed UART packet. Ignoring!")
-                pass;
+            except SyntaxError or ValueError or TypeError:
+                ros.logwarn("Malformed UART packet. Ignoring line: " + str(line))
+                pass
+            except Exception as ex:
+                ros.logwarn("Unknown exception when reading UART sensor values: " + str(ex))
+                pass
 
             if "DATA" in dico:
                 self._add_data(dico["DATA"])

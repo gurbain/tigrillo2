@@ -4,7 +4,6 @@ and bullet are supportedbut bullet should be also soon.
 """
 
 import ast
-import configparser
 import math
 import matplotlib
 matplotlib.use("Agg")
@@ -12,6 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import logging
 import pickle as pkl
+import rospy as ros
 import sys
 import time
 import traceback
@@ -34,14 +34,13 @@ class Controller(object):
 
         # Retrieve the config
         self.config = configuration
-        self.log = logging.getLogger('Controller')
         params = configuration["Controller"]
 
         if "file" in params:
             self.load(params["file"])
         else:
             if "params" in params:
-                if type(params["params"]) == str:
+                if type(params["params"]) == str or unicode:
                     self.params = ast.literal_eval(params["params"])
                 elif type(params["params"]) == (np.ndarray or list):
                     self.params = params["params"]
@@ -148,14 +147,14 @@ class Controller(object):
                 # Do something for real-time here
 
         except:
-            self.log.error("Simulation aborted by user. Physics time: " + str(physics.sim_duration) +
+            ros.logerr("Simulation aborted by user. Physics time: " + str(physics.sim_duration) +
                            "s. Controller time: not set!")
             physics.kill_sim()
             traceback.print_exc()
             sys.exit()
 
         rt = time.time() - self.t_init
-        self.log.info("Simulation of {0:.2f}s (ST)".format(st) +
+        ros.loginfo("Simulation of {0:.2f}s (ST)".format(st) +
                       " finished in {0:.2f}s (RT)".format(rt) +
                       " with acceleration of {0:.3f} x".format(st/rt))
 
@@ -327,7 +326,7 @@ class CPG(Controller):
         cmd = []
         if n_steps == 0:
             n_steps = 1
-            self.log.error("Controller time step (" + str((self.t - self.prev_t)*1000) +
+            ros.logerr("Controller time step (" + str((self.t - self.prev_t)*1000) +
                            "ms) is too low for numerical integration (dt = " + str(self.dt*1000) + " ms). " +
                            "Truncating control signal to avoid stopping software!")
 
@@ -357,7 +356,7 @@ class AdaptableCPG(CPG):
         cmd = []
         if n_steps == 0:
             n_steps = 1
-            self.log.error("Controller time step (" + str((self.t - self.prev_t)*1000) +
+            ros.logerr("Controller time step (" + str((self.t - self.prev_t)*1000) +
                            "ms) is too low for numerical integration (dt = " + str(self.dt*1000) + " ms). " +
                            "Truncating control signal to avoid stopping software!")
 

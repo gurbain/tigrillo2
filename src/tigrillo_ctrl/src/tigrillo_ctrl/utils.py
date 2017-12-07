@@ -69,6 +69,7 @@ def load_csv(path):
 
     return result
 
+
 def save_csv_row(dictionary, path, index):
     """ Save a dictionnary into one row of a csv file """
 
@@ -78,6 +79,29 @@ def save_csv_row(dictionary, path, index):
             w.writeheader()
         w.writerow(dictionary)
 
+
+def retrieve_config(arg_list, default_config):
+    """ Retrieve a dictionary from a config file """
+
+    if len(arg_list) > 1:
+        config_file = arg_list[-1]
+    else:
+        config_file = default_config
+
+    # Convert config file
+    config = configparser.ConfigParser()
+    config.read(config_file)
+    
+    return {s: dict(config.items(s)) for s in config.sections()}
+
+
+def dict_keys_to_str(dictionary):
+    """ Recursively converts dictionary keys to strings """
+
+    if not isinstance(dictionary, dict):
+        return dictionary
+    return dict((str(k), dict_keys_to_str(v)) 
+        for k, v in dictionary.items())
 
 # Information printing utils
 

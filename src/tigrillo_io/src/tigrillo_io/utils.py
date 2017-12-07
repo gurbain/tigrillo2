@@ -79,6 +79,15 @@ def save_csv_row(dictionary, path, index):
         w.writerow(dictionary)
 
 
+def dict_keys_to_str(dictionary):
+    """ Recursively converts dictionary keys to strings """
+
+    if not isinstance(dictionary, dict):
+        return dictionary
+    return dict((str(k), dict_keys_to_str(v)) 
+        for k, v in dictionary.items())
+
+
 # Information printing utils
 
 def timestamp():
