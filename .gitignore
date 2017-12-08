@@ -5,6 +5,17 @@ devel/*
 
 # Result files
 data/results/*
+data/configs/trained_ann/*
 
 # Python compiled files
 *.pyc
+
+# Pictures and data
+*.csv
+*.png
+*.jpg
+*.jpeg
+
+# Other built files
+*build*
+*OpenCM*
