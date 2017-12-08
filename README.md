@@ -28,10 +28,13 @@ cd tigrillo2 && catkin_make
 Source the folder in your ROS environment:
 ```
 echo "source CUSTOM_PATH/tigrillo2/devel/setup.bash" > ~/.bashrc
-```
 OR
-```
 echo "source CUSTOM_PATH/tigrillo2/devel/setup.zsh" > ~/.zshrc
+```
+Also, check that the hosname and roscore (master computer) adresses are correctly set in the ROS environment by setting the following line in the .bashrc or the .zshrc:
+```
+export ROS_HOSTNAME=192.168.1.43 # THE LOCAL IP ADDRESS OF THE COMPUTER
+export ROS_MASTER_URI=http://192.168.1.12:5555/ # THE LOCAL IP ADDRESS AND PORT NUMBER OF THE ROSCORE COMPUTER
 ```
 
 ### On the Tigrillo OpenCM
@@ -50,15 +53,9 @@ sudo make do_upload
 
 ### Setting up the ROS environment
 
-On one computer in the network, run roscore:
+On the master computer (see installation above), run roscore:
 ```
 roscore - p PORT_NUMBER
-```
-
-On all computer, ensure that hosname and roscore adresses are correctly set in the ROS environment by setting the following line in the .bashrc or the .zshrc:
-```
-export ROS_HOSTNAME=192.168.1.43 # THE LOCAL IP ADDRESS OF THE COMPUTER
-export ROS_MASTER_URI=http://192.168.1.12:5555/ # THE LOCAL IP ADDRESS AND PORT NUMBER OF THE ROSCORE COMPUTER
 ```
 
 ### Tigrillo Robot
