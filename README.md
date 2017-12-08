@@ -51,8 +51,6 @@ sudo make do_upload
 
 ## Example
 
-### Setting up the ROS environment
-
 On the master computer (see installation above), run roscore:
 ```
 roscore - p PORT_NUMBER
