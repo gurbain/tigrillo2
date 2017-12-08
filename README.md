@@ -11,6 +11,8 @@ This project have been tested with the following software:
  - Python 2.7
  - ROS kinetic
 
+
+
 ## Installation
 
 ### On the Tigrillo RPI or a computer
@@ -37,6 +39,7 @@ export ROS_HOSTNAME=192.168.1.43 # THE LOCAL IP ADDRESS OF THE COMPUTER
 export ROS_MASTER_URI=http://192.168.1.12:5555/ # THE LOCAL IP ADDRESS AND PORT NUMBER OF THE ROSCORE COMPUTER
 ```
 
+
 ### On the Tigrillo OpenCM
 Download the OpenCM make tools and edit the makefile of the tigrillo project to point to it:
 ```
@@ -49,12 +52,15 @@ make
 sudo make do_upload
 ```
 
+
+
 ## Example
 
 On the master computer (see installation above), run roscore:
 ```
 roscore - p PORT_NUMBER
 ```
+
 
 ### Tigrillo Robot
 
@@ -63,7 +69,8 @@ On the RPI from the Tigrillo robot, start the low-level nodes (in different shel
 rosrun tigrillo_io uartd
 rosrun tigrillo_io i2cd
 ```
-Be carefull that those nodes produce a ROS log file as well as csv files with all sensors and actuators values that can use disk space and slow down the processes.
+Be carefull that those nodes produce a ROS log file as well as csv files with all sensors and actuators values that can use disk space and slow down the processes for very long runs.
+
 
 ### Controller
 Somewhere in the network, start one controller node, an open-loop CPG for instance:
@@ -71,12 +78,13 @@ Somewhere in the network, start one controller node, an open-loop CPG for instan
 rosrun tigrillo_ctrl openloo_cpg
 ```
 
-You can monitor the bandwith and frequency between the networks node with:
+You can monitor the bandwith and frequency between the network nodes with:
 ```
 rostopic list
 rostopic [hz|bw] TOPIC_NAME
 ```
 By default, the nodes are set to run at 50Hz, so it is good to ensure that such a frequency can be achieved.
+
 
 ### Analysis
 To plot the different signal values in real-time, simply use the rqt_plot tool:
@@ -84,6 +92,7 @@ To plot the different signal values in real-time, simply use the rqt_plot tool:
 rosrun rqt_plot rqt_plot
 ```
 **(not implemented yet):** For further offline analysis, a new node will be written soon!
+
 
 ### Simulation
 Compile the gazebo plugin library:
