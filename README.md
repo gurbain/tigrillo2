@@ -3,6 +3,7 @@
 A ROS project to simulate and pilot the Tigrillo quadruped robot
 
 
+
 ## Requirements
 
 This project have been tested with the following software:
@@ -29,9 +30,9 @@ cd tigrillo2 && catkin_make
 
 Source the folder in your ROS environment:
 ```
-echo "source CUSTOM_PATH/tigrillo2/devel/setup.bash" > ~/.bashrc
+echo "source CUSTOM_PATH/tigrillo2/devel/setup.bash" >> ~/.bashrc
 OR
-echo "source CUSTOM_PATH/tigrillo2/devel/setup.zsh" > ~/.zshrc
+echo "source CUSTOM_PATH/tigrillo2/devel/setup.zsh" >> ~/.zshrc
 ```
 Also, check that the hosname and roscore (master computer) adresses are correctly set in the ROS environment by setting the following line in the .bashrc or the .zshrc:
 ```
@@ -62,7 +63,7 @@ roscore - p PORT_NUMBER
 ```
 
 
-### Tigrillo Robot
+### Robot IOs
 
 On the RPI from the Tigrillo robot, start the low-level nodes (in different shells if needed):
 ```
