@@ -29,9 +29,9 @@ cd tigrillo2 && catkin_make
 
 Source the folder in your ROS environment:
 ```
-echo "source CUSTOM_PATH/tigrillo2/devel/setup.bash" > ~/.bashrc
+echo "source CUSTOM_PATH/tigrillo2/devel/setup.bash" >> ~/.bashrc
 OR
-echo "source CUSTOM_PATH/tigrillo2/devel/setup.zsh" > ~/.zshrc
+echo "source CUSTOM_PATH/tigrillo2/devel/setup.zsh" >> ~/.zshrc
 ```
 Also, check that the hosname and roscore (master computer) adresses are correctly set in the ROS environment by setting the following line in the .bashrc or the .zshrc:
 ```
