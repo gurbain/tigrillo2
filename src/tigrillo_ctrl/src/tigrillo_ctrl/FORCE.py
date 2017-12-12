@@ -161,7 +161,7 @@ class FORCE(object):
             tmp_dict = pickle.load(f)
             f.close()
 
-            self.__dict__.update(tmp_dict.__dict__)
+            self.__dict__.update(tmp_dict)
 
     def save(self, filename):
         f = open(filename, 'wb')
