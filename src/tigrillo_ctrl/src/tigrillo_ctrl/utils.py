@@ -13,7 +13,7 @@ import os
 import platform
 from shutil import copyfile
 import subprocess
-import tigrillo
+#import tigrillo
 import time
 import threading
 
@@ -33,7 +33,7 @@ __date__ = "February 22nd, 2017"
 # Project variables
 
 ROS_QUEUE_SIZE = 1
-DATA_FOLDER = os.path.dirname(tigrillo_io.__file__) + "/../../../../../data"
+DATA_FOLDER = os.path.dirname(tigrillo_io.__file__) + "/../../../../data"
 RESULTS_FOLDER = DATA_FOLDER + "/results"
 CONFIG_FOLDER = DATA_FOLDER + "/configs"
 I2C_CALIB_FILE = CONFIG_FOLDER + "/calibration.json"
