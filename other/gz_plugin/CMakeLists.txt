@@ -1,9 +1,13 @@
 cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
 
+set(PROJECT_NAME "TigrilloPlugin")
+
 find_package(roscpp REQUIRED)
 find_package(std_msgs REQUIRED)
+# find_package(rapidjson REQUIRED)
 include_directories(${roscpp_INCLUDE_DIRS})
 include_directories(${std_msgs_INCLUDE_DIRS})
+#include_directories(${RAPIDJSON_INCLUDE_DIRS})
 
 # Find Gazebo
 find_package(gazebo REQUIRED)
@@ -12,8 +16,11 @@ link_directories(${GAZEBO_LIBRARY_DIRS})
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GAZEBO_CXX_FLAGS}")
 
 # Build our plugin
-add_library(tigrillo_plugin SHARED tigrillo_plugin.cc)
-target_link_libraries(tigrillo_plugin ${GAZEBO_libraries} ${roscpp_LIBRARIES})
+add_library(${PROJECT_NAME} SHARED tigrillo_plugin.cc)
+target_link_libraries(${PROJECT_NAME} ${GAZEBO_libraries} ${roscpp_LIBRARIES})
+
+# Install library
+install(TARGETS ${PROJECT_NAME} DESTINATION .)
 
 # Build the stand-alone test program
 #add_executable(test_tigrillo tigrillo_plugin_test.cc)
