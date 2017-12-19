@@ -96,14 +96,7 @@ rosrun rqt_plot rqt_plot
 
 
 ### Simulation
-Compile the gazebo plugin library:
-```
-cd tigrillo2/other/gz_plugin
-mkdir build && cd build
-cmake ..
-make
-```
-And install it in you GAZEBO_PLUGIN_PATH folder.
+Compile the gazebo plugin and add it to your model. Follow instructions in the *tigrillo2/other/gz_plugin/README.md* file to perform this.
 
 **(not implemented yet):** load the simulation world which interacts with the ROS topics like the */tigrillo_io* node on the robot:
 ```
