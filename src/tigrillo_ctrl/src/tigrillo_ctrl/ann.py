@@ -45,6 +45,7 @@ class ReservoirNet(Neuron, control.Controller):
                  verbose=False, negative_weights=True, fraction_inverted=0.0, seed=None, config=None):
 
         Neuron.__init__(self)
+        control.Controller.__init__(self)
 
         self.scale_bias = scale_bias
         self.scale_fb = scale_fb

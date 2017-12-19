@@ -29,9 +29,9 @@ class CTRLROS():
         self.uart_sub_name = "uart_sensors"
         self.i2c_sub_name = "i2c_sensors"
         self.i2c_srv_freq_name = "i2c_set_sens_freq"
-        self.i2c_srv_rst_name = "i2c_rst_sens_zero"
+        self.i2c_srv_cal_name = "i2c_save_cal"
         self.uart_srv_freq_name = "uart_set_sens_freq"
-        self.uart_srv_rst_name = "uart_rst_sens_zero"
+        self.uart_srv_cal_name = "i2c_save_cal"
 
         self.queue_size = utils.ROS_QUEUE_SIZE
 
@@ -39,9 +39,9 @@ class CTRLROS():
         self.uart_sub = None
         self.i2c_sub = None
         self.i2c_srv_freq = None
-        self.i2c_srv_rst = None
+        self.i2c_srv_cal = None
         self.uart_srv_freq = None
-        self.uart_srv_rst = None
+        self.uart_srv_cal = None
 
         self.uart_sensors = dict()
         self.uart_actuators = dict()
@@ -72,14 +72,14 @@ class CTRLROS():
     def reset_sensor_calibration(self):
 
         try:
-            ack_rst_i2c = self.i2c_srv_rst()
-            ack_rst_uart = self.uart_srv_rst()
+            ack_cal_i2c = self.i2c_srv_cal()
+            ack_cal_uart = self.uart_srv_cal()
 
-            if  ack_rst_i2c["success"] and ack_rst_uart["success"]:
+            if  ack_cal_i2c["success"] and ack_cal_uart["success"]:
                 ros.logwarn("UART and I2C sensors properly calibrated!")
             else:
-                ros.logerr("Sensors calibration failed with UART message: " + ack_rst_uart["msg"] +
-                           " and I2C message: " + ack_rst_i2c["msg"])
+                ros.logerr("Sensors calibration failed with UART message: " + ack_cal_uart["msg"] +
+                           " and I2C message: " + ack_cal_i2c["msg"])
 
         except ros.ServiceException as exc:
             ros.logerr("Service did not process request: " + str(exc))
@@ -115,14 +115,14 @@ class CTRLROS():
 
         ros.init_node(self.node_name, log_level=ros.INFO)
         self.uart_pub = ros.Publisher(self.uart_pub_name, String, queue_size=self.queue_size)
-        self.uart_sub = ros.Subscriber(self.uart_sub_name, String, callback=self.__i2c_ros_sub, queue_size=self.queue_size)
-        self.i2c_sub = ros.Subscriber(self.i2c_sub_name, String, callback=self.__uart_ros_sub, queue_size=self.queue_size)
+        self.i2c_sub = ros.Subscriber(self.uart_sub_name, String, callback=self.__i2c_ros_sub, queue_size=self.queue_size)
+        self.uart_sub = ros.Subscriber(self.i2c_sub_name, String, callback=self.__uart_ros_sub, queue_size=self.queue_size)
 
         try:
             ros.wait_for_service(self.i2c_srv_freq_name, timeout=2)
-            ros.wait_for_service(self.i2c_srv_rst_name, timeout=2)
+            ros.wait_for_service(self.i2c_srv_cal_name, timeout=2)
             ros.wait_for_service(self.uart_srv_freq_name, timeout=2)
-            ros.wait_for_service(self.uart_srv_rst_name, timeout=2)
+            ros.wait_for_service(self.uart_srv_cal_name, timeout=2)
 
         except ros.exceptions.ROSException as exc:
             ros.logerr(str(exc) + " ! Please, check that the UART and I2C nodes are started on the ROS network")
@@ -130,9 +130,9 @@ class CTRLROS():
 
 
         self.i2c_srv_freq = ros.ServiceProxy(self.i2c_srv_freq_name, Frequency)
-        self.i2c_srv_rst = ros.ServiceProxy(self.i2c_srv_rst_name, Trigger)
+        self.i2c_srv_cal = ros.ServiceProxy(self.i2c_srv_cal_name, Trigger)
         self.uart_srv_freq = ros.ServiceProxy(self.uart_srv_freq_name, Frequency)
-        self.uart_srv_rst = ros.ServiceProxy(self.uart_srv_rst_name, Trigger)
+        self.uart_srv_cal = ros.ServiceProxy(self.uart_srv_cal_name, Trigger)
 
 
 if __name__ == '__main__':

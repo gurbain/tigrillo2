@@ -11,9 +11,23 @@ __status__ = "Research"
 __date__ = "December 5th, 2017"
 
 import tigrillo_ctrl
+from tigrillo_ctrl.calib_ros import *
+
 import time
 
-if __name__ == "__main__":
+if __name__ == '__main__':
 
-    while 1:
-    	time.sleep(1)
+    # Create a calibration object
+	cal = CalibROS()
+	cal.start()
+
+	# IMU Calibration:
+	#cal.calibrate_imu()
+
+	# Sensors calibration
+	#cal.calibrate_leg_sensors()
+
+	# Actuators calibration
+	cal.calibrate_actuators()
+
+

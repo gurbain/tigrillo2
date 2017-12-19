@@ -34,9 +34,9 @@ __date__ = "February 22nd, 2017"
 
 ROS_QUEUE_SIZE = 1
 DATA_FOLDER = os.path.dirname(tigrillo_io.__file__) + "/../../../../../data"
-RESULTS_FOLDER = DATA_FOLDER + "/results"
-CONFIG_FOLDER = DATA_FOLDER + "/configs"
-I2C_CALIB_FILE = CONFIG_FOLDER + "/calibration.json"
+RESULTS_FOLDER = DATA_FOLDER + "/results/"
+CONFIG_FOLDER = DATA_FOLDER + "/configs/"
+CALIB_FOLDER = DATA_FOLDER + "/calibrations/"
 
 
 # Files and IOs Utils
@@ -70,14 +70,68 @@ def load_csv(path):
     return result
 
 
-def save_csv_row(dictionary, path, index):
+def save_csv_row(d, path, index):
     """ Save a dictionnary into one row of a csv file """
 
-    with open(path, 'a') as f:
-        w = csv.DictWriter(f, sorted(dictionary.keys()))
-        if index == 0:
+    dict_keys = sorted(d.keys())
+
+    # For the first time, use dictwriter
+    if index == 0 or os.stat(path).st_size == 0:
+        with open(path, 'wb') as f:
+            w = csv.DictWriter(f, dict_keys)
             w.writeheader()
-        w.writerow(dictionary)
+            w.writerow(d)
+
+    else:
+        # Read the header
+        with open(path, 'rb') as f:
+            r = csv.reader(f)
+            csv_keys = next(r)
+
+        # If there are some new keys, rewrite the header
+        if len(set(dict_keys) - set(csv_keys)) > 0:
+
+            with open(path) as inf, open('tmp', 'wb') as outf:
+                r = csv.reader(inf)
+                w = csv.writer(outf)
+                for i, line in enumerate(r):
+                    if i == 0:
+                        #print csv_keys
+                        csv_keys = csv_keys + sorted(set(dict_keys) - set(csv_keys))
+                        #print csv_keys
+                        w.writerow(csv_keys)
+                    else:
+                        w.writerow(line)
+            os.remove(path)
+            os.rename('tmp', path)
+
+        # Populate the last line with sorted values
+        with open(path, 'ab') as f:
+            w = csv.writer(f)
+            to_add = []
+            for k in csv_keys:
+                if k in dict_keys:
+                    to_add.append(d[k])
+                else:
+                    to_add.append("")
+            w.writerow(to_add)
+
+
+def save_calib_file(data, filename):
+    """ Save a calibration JSON file in the calibration folder """
+
+    mkdir(CALIB_FOLDER)
+    with open(CALIB_FOLDER + filename, 'w') as cal_file:
+        cal_file.write(data)
+
+
+def load_calib_file(filename):
+    """ Load a calibration JSON file from the calibration folder """
+
+    with open(CALIB_FOLDER + filename, 'r') as cal_file:
+        data = json.load(cal_file)
+
+    return data
 
 
 def retrieve_config(arg_list, default_config):

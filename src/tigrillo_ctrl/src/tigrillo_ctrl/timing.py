@@ -66,7 +66,8 @@ class Timer(object):
             ros.logdebug('Warning: the last time step (' + str(self.rdt.total_seconds()) +
                         ' s) is higher than the desired one (' + str(self.sdt) +
                         ' s)! The last iteration finished at ' + str(self.ctrl_time.strftime("%S.%fs")) + 
-                        ' instead of the expected ' + str((self.rt_init + datetime.timedelta(seconds=self.st)).strftime("%S.%fs")))
+                        ' instead of the expected ' + str((self.rt_init + datetime.timedelta(seconds=self.st)).strftime("%S.%fs") +
+                        '. Please reduce computation load!'))
         
         self.st = new_st
         self.rt = new_rt

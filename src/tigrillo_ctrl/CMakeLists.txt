@@ -10,6 +10,7 @@ find_package(catkin REQUIRED COMPONENTS
 
 add_service_files(DIRECTORY srv
                   FILES
+		  Calibration.srv
                   Frequency.srv)
 
 catkin_python_setup()
