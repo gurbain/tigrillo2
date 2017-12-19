@@ -4,6 +4,7 @@ import rospy as ros
 import pickle
 import sklearn.linear_model
 
+
 from tigrillo_ctrl import utils, control
 
 
@@ -44,63 +45,68 @@ class ReservoirNet(Neuron, control.Controller):
     def __init__(self, n_in=0, n_out=1, n_res=100, spec_rad=1.15, leakage=0.1, scale_bias=0.5, scale_fb=5.0, scale_noise=0.01, scale_fb_noise=0.01,
                  verbose=False, negative_weights=True, fraction_inverted=0.0, seed=None, config=None):
 
-        Neuron.__init__(self)
+        # if config != None:
+        #     self.load(config["Controller"]["filename"])
+        #     self.dt = float(config["Controller"]["anntimestep"])
 
-        self.scale_bias = scale_bias
-        self.scale_fb = scale_fb
-        self.scale_noise = scale_noise
-        self.scale_feedback_noise = scale_fb_noise
 
-        self.leakage = leakage
-
-        self.TRANS_PERC = 0.1
-
-        self.n_in = n_in
-        self.n_out = n_out
-        self.n_res = n_res
-
-        if seed == None:
-            self.rng = np.random.RandomState(np.random.randint(0,99999))
+        if config != None:
+            self.load(config)
         else:
-            self.rng = np.random.RandomState(seed)
+            Neuron.__init__(self)
 
-        self.w_out = self.rng.randn(n_res, n_out)
-        if not negative_weights:
-            self.w_out = abs(self.w_out)
-        self.w_in = self.rng.randn(n_res, n_in)
-        if not negative_weights:
-            self.w_in = abs(self.w_in)
-        self.w_bias = self.rng.randn(n_res,1) * self.scale_bias
-        self.w_bias = 0.0 # mimics resting noise level of approx 50 Hz
-        self.w_res = self.get_rand_mat(n_res, spec_rad,negative_weights=negative_weights)
+            self.scale_bias = scale_bias
+            self.scale_fb = scale_fb
+            self.scale_noise = scale_noise
+            self.scale_feedback_noise = scale_fb_noise
 
-        self.w_fb = self.rng.randn(n_res, n_out) * self.scale_fb
+            self.leakage = leakage
 
-        if not(negative_weights):
-            self.w_fb = abs(self.w_fb)
+            self.TRANS_PERC = 0.1
 
-        self.p_connect_res = self.createConnectivityMatrix()
-        p_connect_fb = np.ones((n_res)) * 0.1
-        self.p_connect_fb = p_connect_fb.reshape(-1, 1)
+            self.n_in = n_in
+            self.n_out = n_out
+            self.n_res = n_res
 
-        self.N_inverted = int(np.round(n_res*fraction_inverted))
+            if seed == None:
+                self.rng = np.random.RandomState(np.random.randint(0,99999))
+            else:
+                self.rng = np.random.RandomState(seed)
 
-        self.x = np.zeros((n_res, 1))
-        self.u = np.zeros(n_in)
-        self.y = np.zeros(n_out)
+            self.w_out = self.rng.randn(n_res, n_out)
+            if not negative_weights:
+                self.w_out = abs(self.w_out)
+            self.w_in = self.rng.randn(n_res, n_in)
+            if not negative_weights:
+                self.w_in = abs(self.w_in)
+            self.w_bias = self.rng.randn(n_res,1) * self.scale_bias
+            self.w_bias = 0.0 # mimics resting noise level of approx 50 Hz
+            self.w_res = self.get_rand_mat(n_res, spec_rad,negative_weights=negative_weights)
 
-        self.verbose = verbose
+            self.w_fb = self.rng.randn(n_res, n_out) * self.scale_fb
 
-        self.Y = np.array([])
-        self.X = np.array([])
+            if not(negative_weights):
+                self.w_fb = abs(self.w_fb)
 
-        self.t = 0
-        self.prev_t = 0
-        self.dt = 0.01
+            self.p_connect_res = self.createConnectivityMatrix()
+            p_connect_fb = np.ones((n_res)) * 0.1
+            self.p_connect_fb = p_connect_fb.reshape(-1, 1)
 
-        if config:
-            self.load(config["Controller"]["filename"])
-            self.dt = float(config["Controller"]["anntimestep"])
+            self.N_inverted = int(np.round(n_res*fraction_inverted))
+
+            self.x = np.zeros((n_res, 1))
+            self.u = np.zeros(n_in)
+            self.y = np.zeros(n_out)
+
+            self.verbose = verbose
+
+            self.Y = np.array([])
+            self.X = np.array([])
+
+            self.t = 0
+            self.prev_t = 0
+            self.dt = 0.01
+
 
     def getCoordinates(self, ID, xD, yD):
 
@@ -201,6 +207,29 @@ class ReservoirNet(Neuron, control.Controller):
 
         return np.dot(np.transpose(self.w_out), self.x)
 
+    def step_gradual_force(self, t, u=0, y=0):
+        """
+        Return the network outputs at time t
+        """
+
+        self.t = t
+        n_steps = (int(self.t / self.dt) - self.prev_t)
+
+        # If the ANN timestep is higher than the realtime one
+        if n_steps == 0:
+            return self.y
+
+        for _ in range(n_steps):
+            self.update_state(u, y)
+
+        self.prev_t = int(self.t / self.dt)
+
+        readout = np.dot(np.transpose(self.w_out), self.x)
+        target = self.target[t] # ??? is t index ???
+        output_force, new_w = self.force.step(self.x, readout, target, t)
+
+        return output_force
+
     def run(self, n_it, U=None, fakeFB=None, to_plot=200):
         """
         Run the network for n_it timesteps given a timeserie of input vector U . \
@@ -296,7 +325,9 @@ class ReservoirNet(Neuron, control.Controller):
     def save(self, exp_dir):
 
         with open(exp_dir + '/ANN', "wb") as f:
-            pickle.dump(self, f)
+            pickle.dump(self.__dict__ , f)
+
+        return
 
     def load(self, file):
         """
@@ -307,4 +338,5 @@ class ReservoirNet(Neuron, control.Controller):
             tmp_dict = pickle.load(f)
             f.close()
 
-            self.__dict__.update(tmp_dict.__dict__)
+            self.__dict__.update(tmp_dict)
+        return
