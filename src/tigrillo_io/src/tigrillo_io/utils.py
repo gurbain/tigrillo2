@@ -13,7 +13,6 @@ import os
 import platform
 from shutil import copyfile
 import subprocess
-import tigrillo
 import time
 import threading
 
@@ -34,9 +33,9 @@ __date__ = "February 22nd, 2017"
 
 ROS_QUEUE_SIZE = 1
 DATA_FOLDER = os.path.dirname(tigrillo_io.__file__) + "/../../../../../data"
-RESULTS_FOLDER = DATA_FOLDER + "/results"
-CONFIG_FOLDER = DATA_FOLDER + "/configs"
-I2C_CALIB_FILE = CONFIG_FOLDER + "/calibration.json"
+RESULTS_FOLDER = DATA_FOLDER + "/results/"
+CONFIG_FOLDER = DATA_FOLDER + "/configs/"
+CALIB_FOLDER = DATA_FOLDER + "/calibrations/"
 
 
 # Files and IOs Utils
@@ -114,6 +113,39 @@ def save_csv_row(d, path, index):
                 else:
                     to_add.append("")
             w.writerow(to_add)
+
+
+def save_calib_file(data, filename):
+    """ Save a calibration JSON file in the calibration folder """
+
+    mkdir(CALIB_FOLDER)
+    with open(CALIB_FOLDER + filename, 'w') as cal_file:
+        cal_file.write(data)
+
+
+def load_calib_file(filename):
+    """ Load a calibration JSON file from the calibration folder """
+
+    with open(CALIB_FOLDER + filename, 'r') as cal_file:
+        data = json.load(cal_file)
+
+    return data
+
+
+def retrieve_config(arg_list, default_config):
+    """ Retrieve a dictionary from a config file """
+
+    if len(arg_list) > 1:
+        config_file = arg_list[-1]
+    else:
+        config_file = default_config
+
+    # Convert config file
+    config = configparser.ConfigParser()
+    config.read(config_file)
+    
+    return {s: dict(config.items(s)) for s in config.sections()}
+
 
 
 def dict_keys_to_str(dictionary):

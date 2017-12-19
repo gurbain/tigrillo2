@@ -1,5 +1,5 @@
 
-from tigrillo_io.srv import Frequency, FrequencyResponse
+from tigrillo_io.srv import Calibration, CalibrationResponse, Frequency, FrequencyResponse
 import tigrillo_io
 from tigrillo_io import BNO055, utils
 
@@ -27,13 +27,12 @@ __date__ = "September 11th, 2017"
 
 class I2CSensors:
 
-    def __init__(self, i2c_rst_pin, i2c_calib_file):
+    def __init__(self, i2c_rst_pin):
 
        self.i2c_rst_pin = i2c_rst_pin
-       self.i2c_calib_file = i2c_calib_file
 
    
-    def start(self):
+    def start(self, calib_file):
 
         self.imu = BNO055.BNO055(rst=int(self.i2c_rst_pin))
 
@@ -41,11 +40,13 @@ class I2CSensors:
            raise RuntimeError('Failed to initialize IMU! Please, check the connection')
         else:
            ros.logwarn("I2C Sensors properly initialized!")
-           self.printStatus()
+           self.print_status()
+
+        self.load_calib(calib_file)
 
         return
 
-    def printStatus(self):
+    def print_status(self):
 
         status, self_test, error = self.imu.get_system_status()
         sw, bl, acc, mag, gyro = self.imu.get_revision()
@@ -67,16 +68,23 @@ class I2CSensors:
         ros.logwarn('\tCalibration Magnetometer status:    0x{0:02X}'.format(cal_mag))
         ros.logwarn('\tCalibration Gyroscope status:       0x{0:02X}\n'.format(cal_gyro))
 
+    def load_calib(self, file):
 
-    def resetCalib(self):
+        data = utils.load_calib_file(file)
+        self.imu.set_calibration(data)
 
-        with open(self.i2c_calib_file, 'r') as cal_file:
-            data = json.load(cal_file)
-            self.imu.set_calibration(data)
+        ros.logwarn("IMU sensors calibration loaded from " + str(file) + "!")
 
-        ros.logwarn("Sensors properly calibrated!")
+    def save_calib(self, data, file):
 
-    def getMeasure(self):
+        calib = self.imu.get_calibration()
+        calib_str = json.dumps(calib)
+        utils.save_calib_file(calib_str, file)
+
+        ros.logwarn("IMU sensors calibration saved in " + str(file) + "!")
+        return calib_str
+
+    def get_measure(self):
 
         imu_timestamp = time.time()
         h, r, p = self.imu.read_euler()
@@ -97,13 +105,15 @@ class I2CSensors:
 
 class I2CROS():
 
-    def __init__(self, i2c_rst_pin="18", i2c_calib_file=utils.I2C_CALIB_FILE, pub_freq="5", save_all=True, data_folder=None):
+    def __init__(self, i2c_rst_pin="18", pub_freq="5", calib_i2c="calib_i2c.json", 
+                 save_all=True, data_folder=None):
 
         # ROS parameters
         self.node_name = "i2c"
         self.pub_name = "i2c_sensors"
         self.srv_freq_name = "i2c_set_sens_freq"
-        self.srv_rst_name = "i2c_rst_sens_zero"
+        self.srv_save_cal_name = "i2c_save_cal"
+        self.srv_load_cal_name = "i2c_load_cal"
         self.pub_rate = pub_freq
         self.queue_size = utils.ROS_QUEUE_SIZE
 
@@ -111,9 +121,9 @@ class I2CROS():
         self.data_folder = data_folder
         self.sensors = None
         self.sensors_index = 0
+        self.calib_i2c = calib_i2c
 
         self.i2c_rst_pin = i2c_rst_pin
-        self.i2c_calib_file = i2c_calib_file
 
         self.date_zero_s = None
         self.date_zero_a = None
@@ -127,8 +137,8 @@ class I2CROS():
 
     def start(self):
 
-        self.sensors = I2CSensors(self.i2c_rst_pin, self.i2c_calib_file)
-        self.sensors.start()
+        self.sensors = I2CSensors(self.i2c_rst_pin)
+        self.sensors.start(self.calib_i2c)
 
         self.start_ros_node()
 
@@ -136,7 +146,7 @@ class I2CROS():
 
     def get_last_sensors(self):
 
-        measure = self.sensors.getMeasure()
+        measure = self.sensors.get_measure()
         nows = datetime.datetime.now()
         if self.date_zero_s is None:
             self.date_zero_s = nows.minute*60 + nows.second + nows.microsecond/1000000.0
@@ -147,10 +157,6 @@ class I2CROS():
 
         self.sensors_index += 1
         return measure
-
-    def reset_sensors_calib(self):
-
-        return self.sensors.resetCalib()
 
     def __ros_pub(self):
 
@@ -173,16 +179,24 @@ class I2CROS():
 
         return FrequencyResponse(ack["success"], ack["msg"])
 
-    def __ros_rst_srv(self, msg):
+    def __ros_save_cal_srv(self, msg):
 
-        self.reset_sensors_calib()
-        return TriggerResponse(True, "Success!")
+        calib = self.sensors.save_calib(msg.data, msg.filename)
+
+        return CalibrationResponse(True, calib)
+
+    def __ros_load_cal_srv(self, msg):
+
+        self.sensors.load_calib(msg.filename)
+
+        return CalibrationResponse(True, "")
 
     def start_ros_node(self):
 
         ros.init_node(self.node_name, log_level=ros.INFO)
         self.pub = ros.Publisher(self.pub_name, String, queue_size=self.queue_size)
-        self.srv_rst = ros.Service(self.srv_rst_name, Trigger, self.__ros_rst_srv)
+        self.srv_save_cal = ros.Service(self.srv_save_cal_name, Calibration, self.__ros_save_cal_srv)
+        self.srv_load_cal = ros.Service(self.srv_load_cal_name, Calibration, self.__ros_load_cal_srv)
         self.srv_freq = ros.Service(self.srv_freq_name, Frequency, self.__ros_freq_srv)
 
         try:
@@ -195,5 +209,5 @@ class I2CROS():
 
 if __name__ == "__main__":
 
-    i2cros = I2CROS(i2c_rst_pin="18", i2c_calib_file="calibration.json", pub_freq=10)
+    i2cros = I2CROS(i2c_rst_pin="18", pub_freq=10)
     i2cros.start()

@@ -15,5 +15,5 @@ from tigrillo_io.i2c_ros import *
 
 if __name__ == "__main__":
 
-    i2cros = I2CROS(i2c_rst_pin="18", i2c_calib_file=tigrillo_io.utils.I2C_CALIB_FILE, pub_freq=50)
+    i2cros = I2CROS(i2c_rst_pin="18", pub_freq=50)
     i2cros.start()

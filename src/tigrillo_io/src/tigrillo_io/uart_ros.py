@@ -8,7 +8,7 @@ from rospy_message_converter import message_converter
 from std_msgs.msg import String
 from std_srvs.srv import *
 
-from tigrillo_io.srv import Frequency, FrequencyResponse
+from tigrillo_io.srv import Calibration, CalibrationResponse, Frequency, FrequencyResponse
 import tigrillo_io
 from tigrillo_io import BNO055, uart_daemon, utils
 
@@ -30,12 +30,15 @@ class UARTSensors:
     def __init__(self, uart):
 
         self.uart = uart
+        self.calibration_data = None
 
-    def start(self):
+    def start(self, calib_file):
+
+        self.load_calib(calib_file)
 
         ros.logwarn("Sensors properly initialized!")
 
-    def changeUARTPeriod(self, period):
+    def change_uart_period(self, period):
 
         line = "F"
         line += str(period)
@@ -50,7 +53,7 @@ class UARTSensors:
 
         return ack
 
-    def resetCalib(self):
+    def reset_sensors(self):
 
         line = "R"
         self.uart.write(line)
@@ -64,13 +67,25 @@ class UARTSensors:
 
         return ack
 
-    def getMeasure(self):
+    def load_calib(self, file):
+
+        data = utils.load_calib_file(file)
+        self.calibration_data = data
+
+        ros.logwarn("UART sensors calibration loaded from file!")
+
+    def save_calib(self, data, file):
+
+        utils.save_calib_file(data, file)
+        ros.logwarn("UART sensors calibration saved in file!")
+
+    def get_measure(self):
 
         measure = self.uart.read_data()
+        print measure,  self.calibration_data
         if not measure:
             measure = dict()
             ros.loginfo("Cannot retrieve UART sensor data! Please increase sensor reading period!")
-        print measure
 
         return measure
 
@@ -81,17 +96,38 @@ class UARTActuators:
 
         self.uart = uart
 
-    def start(self):
+        self.mul_factor = 1
+        self.offset = 115
 
+    def load_calib(self, file):
+
+        data = utils.load_calib_file(filename)
+        self.mul_factor = data["mul_factor"]
+        self.offset = data["offset"]
+
+        ros.logwarn("Actuators calibration loaded from file!")
+
+    def save_calib(self, data, file):
+
+        self.mul_factor = data["mul_factor"]
+        self.offset = data["offset"]
+        data = {"mul_factor": self.mul_factor, "offset": self.offset}
+
+        utils.save_calib_file(data, file)
+        ros.logwarn("Actuators calibration saved in file!")
+
+    def start(self, calib_file):
+
+        # self.load_calib(calib_file)
         ros.logwarn("Actuators properly initialized!")
 
     def update(self, update):
 
         line = "A"
-        line += str(int(update["FL"])) + ','
-        line += str(int(update["FR"])) + ','
-        line += str(int(update["BL"])) + ','
-        line += str(int(update["BR"]))
+        line += str(self.mul_factor * int(update["FL"]) + self.offset) + ','
+        line += str(self.mul_factor * int(update["FR"]) + self.offset) + ','
+        line += str(self.mul_factor * int(update["BL"]) + self.offset) + ','
+        line += str(self.mul_factor * int(update["BR"]) + self.offset)
         self.uart.write(line)
 
 
@@ -99,13 +135,17 @@ class UARTROS():
 
 
     def __init__(self, ser_port="/dev/ttyS0", ser_baud=921600, usb_port="/dev/ttyACM0", usb_baud=9600, 
+                 calib_uart_sens="calib_uart_sens.json" , calib_uart_act="calib_uart_act.json",
                  pub_freq=5, save_all=True, data_folder=None):
 
         # ROS parameters
         self.node_name = "uartd"
         self.pub_name = "uart_sensors"
         self.srv_freq_name = "uart_set_sens_freq"
-        self.srv_rst_name = "uart_rst_sens_zero"
+        self.srv_load_sens_cal_name = "uart_load_sens_cal"
+        self.srv_save_sens_cal_name = "uart_save_sens_cal"
+        self.srv_load_act_cal_name = "uart_load_act_cal"
+        self.srv_save_act_cal_name = "uart_save_act_cal"
         self.sub_name = "uart_actuators"
         self.pub_rate = pub_freq
         self.queue_size = utils.ROS_QUEUE_SIZE
@@ -122,6 +162,8 @@ class UARTROS():
         self.sensors_index = 0
         self.actuators = None
         self.actuators_index = 0
+        self.calib_uart_sens = calib_uart_sens
+        self.calib_uart_act = calib_uart_act
 
         self.date_zero_s = None
         self.date_zero_a = None
@@ -141,8 +183,8 @@ class UARTROS():
 
         self.sensors = UARTSensors(self.uart)
         self.actuators = UARTActuators(self.uart)
-        self.sensors.start()
-        self.actuators.start()
+        self.sensors.start(self.calib_uart_sens)
+        self.actuators.start(self.calib_uart_act)
 
         self.start_ros_node()
 
@@ -150,7 +192,7 @@ class UARTROS():
 
     def get_last_sensors(self):
 
-        measure = self.sensors.getMeasure()
+        measure = self.sensors.get_measure()
         nows = datetime.datetime.now()
         if self.date_zero_s is None:
             self.date_zero_s = nows.minute*60 + nows.second + nows.microsecond/1000000.0
@@ -209,10 +251,29 @@ class UARTROS():
             ack = {"success": False, "msg": "Frequency format not supported: " + str(msg.freq)}
         return FrequencyResponse(ack["success"], ack["msg"])
 
-    def __ros_rst_srv(self, msg):
+    def __ros_save_sens_cal_srv(self, msg):
 
-        ack = self.reset_sensors_calib()
-        return TriggerResponse(ack["success"], ack["msg"])
+        self.sensors.save_calib(msg.data, msg.filename)
+
+        return CalibrationResponse(True, "")
+
+    def __ros_load_sens_cal_srv(self, msg):
+
+        self.sensors.load_calib(msg.filename)
+
+        return CalibrationResponse(True, "")
+
+    def __ros_save_act_cal_srv(self, msg):
+
+        self.actuators.save_calib(msg.data, msg.filename)
+
+        return CalibrationResponse(True, "")
+
+    def __ros_load_act_cal_srv(self, msg):
+
+        self.actuators.load_calib(msg.filename)
+
+        return CalibrationResponse(True, "")
 
     def start_ros_node(self):
 
@@ -220,7 +281,11 @@ class UARTROS():
         self.pub = ros.Publisher(self.pub_name, String, queue_size=self.queue_size)
         self.sub = ros.Subscriber(self.sub_name, String, callback=self.__ros_sub, queue_size=self.queue_size)
         
-        self.srv_rst = ros.Service(self.srv_rst_name, Trigger, self.__ros_rst_srv)
+        self.srv_save_sens_cal = ros.Service(self.srv_save_sens_cal_name, Calibration, self.__ros_save_sens_cal_srv)
+        self.srv_load_sens_cal = ros.Service(self.srv_load_sens_cal_name, Calibration,  self.__ros_load_sens_cal_srv)
+        self.srv_save_act_cal = ros.Service(self.srv_save_act_cal_name, Calibration, self.__ros_save_act_cal_srv)
+        self.srv_load_act_cal = ros.Service(self.srv_load_act_cal_name, Calibration, self.__ros_load_act_cal_srv)
+
         self.srv_freq = ros.Service(self.srv_freq_name, Frequency, self.__ros_freq_srv)
 
         try:

@@ -84,6 +84,10 @@ class UARTDaemon(threading.Thread):
             del data["End of Reading Time Stamp"]
             del data["Previous Time Stamp"]
             del data["Time Stamp"]
+        if "Sensors values" in data:
+            sv = data["Sensors values"]
+            data.update(sv)
+            del data["Sensors values"]
 
         self.data_buffer.append(data)
         if len(self.data_buffer) > MAX_BUFFER_SIZE:
