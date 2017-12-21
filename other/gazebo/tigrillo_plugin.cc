@@ -72,8 +72,11 @@ namespace gazebo
 		/// \brief A ROS callbackqueue that helps process messages
 		private: ros::CallbackQueue ros_queue;
 
-		/// \brief A thread the keeps running the ros_queue
+		/// \brief A thread that keep running the ros_queue
 		private: std::thread ros_queue_thread;
+
+		/// \brief A thread to send the ROS messages
+		private: std::thread ros_send_thread;
 
 		/// \brief The load function is called by Gazebo when the plugin is
 		/// inserted into simulation
@@ -125,18 +128,27 @@ namespace gazebo
 			// for(std::vector<physics::JointPtr>::iterator it = jvec.begin(); it != jvec.end(); ++it) {
 			// 	std::cerr << (*it)->GetName() << "\n";
 			// }
+			// std::cout << this->model->GetName() + "::" + this->name_shoulder_L << std::endl;
 
 			// Get the four actuated joints
-			this->joint_shoulder_L = this->model->GetJoint(this->name_shoulder_L);
-			this->joint_shoulder_R = this->model->GetJoint(this->name_shoulder_R);
-			this->joint_hip_L = this->model->GetJoint(this->name_hip_L);
-			this->joint_hip_R = this->model->GetJoint(this->name_hip_R);
+			this->joint_shoulder_L = this->model->GetJoint(this->model->GetName() +
+				"::" + this->name_shoulder_L);
+			this->joint_shoulder_R = this->model->GetJoint(this->model->GetName() +
+				"::" + this->name_shoulder_R);
+			this->joint_hip_L = this->model->GetJoint(this->model->GetName() +
+				"::" + this->name_hip_L);
+			this->joint_hip_R = this->model->GetJoint(this->model->GetName() +
+				"::" + this->name_hip_R);
 
 			// Get the four passive joints
-			this->joint_elbow_L = this->model->GetJoint(this->name_elbow_L);
-			this->joint_elbow_R = this->model->GetJoint(this->name_elbow_R);
-			this->joint_knee_L = this->model->GetJoint(this->name_knee_L);
-			this->joint_knee_R = this->model->GetJoint(this->name_knee_R);
+			this->joint_elbow_L = this->model->GetJoint(this->model->GetName() +
+				"::" + this->name_elbow_L);
+			this->joint_elbow_R = this->model->GetJoint(this->model->GetName() +
+				"::" + this->name_elbow_R);
+			this->joint_knee_L = this->model->GetJoint(this->model->GetName() +
+				"::" + this->name_knee_L);
+			this->joint_knee_R = this->model->GetJoint(this->model->GetName() +
+				"::" + this->name_knee_R);
 
 			// Setup a P-controller, with a gain of 0.1.
 			this->pid_shoulder_L = common::PID(p, i, d);
@@ -242,32 +254,36 @@ namespace gazebo
 		}
 
 
-		/// \brief Publish the sensor messages to ROS
-		public: void SendRosMsg()
+		/// \brief Thread that publishes the sensor messages on ROS
+		private: void SendRosMsgThread()
 		{
-			// Convert to json string
-			float sensors[4];
-			this->GetSensors(sensors);
-			rapidjson::Document d;
-			d.SetObject();
-			rapidjson::Document::AllocatorType& all = d.GetAllocator();
-			d.AddMember("FL", sensors[0], all);
-			d.AddMember("FR", sensors[1], all);
-			d.AddMember("BL", sensors[2], all);
-			d.AddMember("BR", sensors[3], all);
-			rapidjson::StringBuffer strbuf;
-			rapidjson::Writer<rapidjson::StringBuffer> writer(strbuf);
-			d.Accept(writer);
 
-   			// Send over ROS
-   			std_msgs::String msg;
-   			msg.data = strbuf.GetString();
-   			ROS_INFO_STREAM("Updating sensors: " << msg.data);
-			this->ros_pub.publish(msg);
+			while (this->ros_node->ok())
+			{
+				// Convert to json string
+				float sensors[4];
+				this->GetSensors(sensors);
+				rapidjson::Document d;
+				d.SetObject();
+				rapidjson::Document::AllocatorType& all = d.GetAllocator();
+				d.AddMember("FL", sensors[0], all);
+				d.AddMember("FR", sensors[1], all);
+				d.AddMember("BL", sensors[2], all);
+				d.AddMember("BR", sensors[3], all);
+				rapidjson::StringBuffer strbuf;
+				rapidjson::Writer<rapidjson::StringBuffer> writer(strbuf);
+				d.Accept(writer);
 
-			// Wait till next time
-			ros::spinOnce();
-			this->pub_rate->sleep();
+	   			// Send over ROS
+	   			std_msgs::String msg;
+	   			msg.data = strbuf.GetString();
+	   			ROS_INFO_STREAM("Updating sensors: " << msg.data);
+				this->ros_pub.publish(msg);
+
+				// Wait till next time
+				ros::spinOnce();
+				this->pub_rate->sleep();
+			}
 		}
 
 
@@ -312,11 +328,9 @@ namespace gazebo
 			this->ros_queue_thread =
 				std::thread(std::bind(&TigrilloPlugin::QueueThread, this));
 
-			// Publish the sensors on ROS in a loop
-			while (this->ros_node->ok())
-			{
-				this->SendRosMsg();
-			}
+			// Publish the sensors on ROS in a thread loop
+			this->ros_send_thread =
+				std::thread(std::bind(&TigrilloPlugin::SendRosMsgThread, this));
 		}
 		
 
