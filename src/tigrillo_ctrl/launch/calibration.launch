@@ -1,0 +1,11 @@
+<launch>
+
+    <!-- Control Node -->
+    <node name="ctrl" pkg="tigrillo_ctrl" type="calibration" respawn="false" output="screen"/>
+
+    <!-- Gazebo Node -->
+    <include file="$(find gazebo_ros)/launch/empty_world.launch">
+        <arg name="world_name" value="$(find tigrillo_ctrl)/worlds/tigrillo.world"/>
+    </include>
+
+</launch>

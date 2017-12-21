@@ -18,14 +18,14 @@ import time
 if __name__ == '__main__':
  
     # Create a calibration object
-  cal = CalibROS()
-  cal.start()
- 
-  # IMU Calibration:
-  #cal.calibrate_imu()
- 
-  # Sensors calibration
-  #cal.calibrate_leg_sensors()
- 
-  # Actuators calibration
-  cal.calibrate_actuators()
+    cal = CalibROS()
+    cal.start()
+
+    # IMU Calibration:
+    #cal.calibrate_imu()
+
+    # Sensors calibration
+    #cal.calibrate_leg_sensors()
+
+    # Actuators calibration
+    cal.calibrate_actuators()
