@@ -2,7 +2,7 @@
 <package format="2">
 	<name>tigrillo_io</name>
 	<version>2.0.0</version>
-	<description>Sensors dameons for the Tigrillo Robot</description>
+	<description>Sensors daemons for the Tigrillo Robot</description>
 
 	<maintainer email="gabriel.urbain@ugent.be">Gabriel Urbain</maintainer>
 	<license>MIT</license>
