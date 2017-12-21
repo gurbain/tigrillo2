@@ -1,0 +1,40 @@
+<?xml version="1.0" ?>
+<sdf version="1.5">
+    <world name="default">
+
+        <!-- Cloudy scence -->
+        <scene>
+            <ambient>1.000000 1.000000 1.000000 1.000000</ambient>
+            <background>0.700000 0.700000 0.700000 1.000000</background>
+            <shadows>1</shadows>
+            <sky>
+                <clouds>
+                    <speed>12</speed>
+                </clouds>
+            </sky>
+        </scene>
+
+        <!-- Ground -->
+        <include>
+            <uri>model://ground_plane</uri>
+        </include>
+
+        <!-- A global light source -->
+        <include>
+            <uri>model://sun</uri>
+        </include>
+
+        <!-- The tigrillo robot -->
+        <include>
+            <uri>model://tigrillo_feet</uri>
+        </include>
+
+        <!-- Physics -->
+         <physics type="ode">
+            <gravity>0.000000 0.000000 -9.81</gravity>
+            <real_time_update_rate>1000.000000</real_time_update_rate>
+            <max_step_size>0.001000</max_step_size>
+        </physics>
+
+</world>
+</sdf>

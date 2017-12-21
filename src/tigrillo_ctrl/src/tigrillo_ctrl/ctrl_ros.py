@@ -6,6 +6,7 @@ from std_msgs.msg import String
 from std_srvs.srv import Trigger
 
 from tigrillo_ctrl.srv import Frequency, FrequencyResponse
+from tigrillo_ctrl.msg import Sensors, Motors, Imu
 from tigrillo_ctrl import utils
 
 
@@ -50,10 +51,9 @@ class CTRLROS():
 
     def update_actuators(self, update, t_run):
 
-        update["Run Time"] = t_run
-
         ros.logdebug("UART actuator update sent: " + str(update))
-        self.uart_pub.publish(json.dumps(update))
+
+        self.uart_pub.publish(run_time=t_run, FL=update[0], FR=update[1], BL=update[2], BR=update[3])
 
     def get_last_sensors(self):
 
@@ -114,19 +114,19 @@ class CTRLROS():
     def start(self):
 
         ros.init_node(self.node_name, log_level=ros.INFO)
-        self.uart_pub = ros.Publisher(self.uart_pub_name, String, queue_size=self.queue_size)
-        self.i2c_sub = ros.Subscriber(self.uart_sub_name, String, callback=self.__i2c_ros_sub, queue_size=self.queue_size)
-        self.uart_sub = ros.Subscriber(self.i2c_sub_name, String, callback=self.__uart_ros_sub, queue_size=self.queue_size)
+        self.uart_pub = ros.Publisher(self.uart_pub_name, Motors, queue_size=self.queue_size)
+        self.i2c_sub = ros.Subscriber(self.i2c_sub_name, Imu, callback=self.__i2c_ros_sub, queue_size=self.queue_size)
+        self.uart_sub = ros.Subscriber(self.uart_sub_name, Sensors, callback=self.__uart_ros_sub, queue_size=self.queue_size)
 
-        try:
-            ros.wait_for_service(self.i2c_srv_freq_name, timeout=2)
-            ros.wait_for_service(self.i2c_srv_cal_name, timeout=2)
-            ros.wait_for_service(self.uart_srv_freq_name, timeout=2)
-            ros.wait_for_service(self.uart_srv_cal_name, timeout=2)
+        # try:
+        #     ros.wait_for_service(self.i2c_srv_freq_name, timeout=2)
+        #     ros.wait_for_service(self.i2c_srv_cal_name, timeout=2)
+        #     ros.wait_for_service(self.uart_srv_freq_name, timeout=2)
+        #     ros.wait_for_service(self.uart_srv_cal_name, timeout=2)
 
-        except ros.exceptions.ROSException as exc:
-            ros.logerr(str(exc) + " ! Please, check that the UART and I2C nodes are started on the ROS network")
-            pass
+        # except ros.exceptions.ROSException as exc:
+        #     ros.logerr(str(exc) + " ! Please, check that the UART and I2C nodes are started on the ROS network")
+        #     pass
 
 
         self.i2c_srv_freq = ros.ServiceProxy(self.i2c_srv_freq_name, Frequency)
