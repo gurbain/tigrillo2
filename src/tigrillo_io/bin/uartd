@@ -15,5 +15,5 @@ from tigrillo_io.uart_ros import *
 
 if __name__ == "__main__":
 
-    uartros = UARTROS(ser_port="/dev/ttyAMA0", ser_baud=921600, usb_port="/dev/ttyACM0", usb_baud=9600, pub_freq=50)
+    uartros = UARTROS(ser_port="/dev/ttyAMA0", ser_baud=921600, usb_port="/dev/ttyACM0", usb_baud=9600, pub_freq=25)
     uartros.start()

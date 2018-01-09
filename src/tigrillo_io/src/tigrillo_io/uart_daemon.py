@@ -98,7 +98,7 @@ class UARTDaemon(threading.Thread):
 
         if ack["Instruction"] == 'A':
             if not "success" in ack["Data"].lower():
-                ros.logerr("Arg, data not received!")
+                ros.logerr("Arg, data not received! Ack: " + str(ack))
 
         # TODO: PRINT IF ACK FAILED
         self.ack_buffer.append(ack)
@@ -168,7 +168,7 @@ class UARTDaemon(threading.Thread):
 
 if __name__ == "__main__":
 
-    uart = UARTDaemon(ser_port="/dev/ttyS0", ser_baud=921600, usb_port="/dev/ttyACM0", usb_baud=9600)
+    uart = UARTDaemon(ser_port="/dev/ttyAMA0", ser_baud=921600, usb_port="/dev/ttyACM0", usb_baud=9600)
     uart.start()
     uart.write("F50000")
     time.sleep(2)

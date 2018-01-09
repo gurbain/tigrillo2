@@ -12,7 +12,11 @@
 #include "ros/callback_queue.h"
 #include "ros/console.h"
 #include "ros/subscribe_options.h"
+
 #include "std_msgs/String.h"
+#include "tigrillo_ctrl/Motors.h"
+#include "tigrillo_ctrl/Imu.h"
+#include "tigrillo_ctrl/Sensors.h"
 
 #include "rapidjson/document.h"
 #include "rapidjson/stringbuffer.h"
@@ -51,6 +55,7 @@ namespace gazebo
 		private: common::PID pid_shoulder_R;
 		private: common::PID pid_hip_L;
 		private: common::PID pid_hip_R;
+		private: bool no_pid = false;
 		
 		/// \brief Constructor
 		public: TigrilloPlugin() {}
@@ -60,11 +65,11 @@ namespace gazebo
 		private: std::string ros_node_name = "tigrillo_rob";
 
 		/// \brief A ROS subscriber and its name
-		private: std::string ros_sub_name = "/tigrillo_ctrl/uart_actuators";
+		private: std::string ros_sub_name = "uart_actuators";
 		private: ros::Subscriber ros_sub;
 
 		/// \brief A ROS publisher, its name and timer
-		private: std::string ros_pub_name = "/tigrillo_rob/uart_sensors";
+		private: std::string ros_pub_name = "sim_sensors";
 		private: ros::Publisher ros_pub;
 		private: std::unique_ptr<ros::Rate> pub_rate;
 		private: int pub_freq;
@@ -112,6 +117,10 @@ namespace gazebo
 				d = _sdf->Get<double>("d");
 			}
 			ROS_INFO_STREAM("PID values are set to: " << p << "   " << i << "   " << d);
+
+			// When the PID is only proportional equal to 1, control the motors in position directly
+			if (p == 1 && i == 0 && d == 0)
+				this->no_pid = true;
 
 			// Safety check
 			if (_model->GetJointCount() == 0)
@@ -183,17 +192,30 @@ namespace gazebo
 			float p_pos_1 = this->joint_shoulder_R->GetAngle(0).Radian();
 			float p_pos_2 = this->joint_hip_L->GetAngle(0).Radian();
 			float p_pos_3 = this->joint_hip_R->GetAngle(0).Radian();
-			ROS_INFO_STREAM("Updating position. Previous " << p_pos_0 << " "
+			ROS_DEBUG_STREAM("Updating position. Previous " << p_pos_0 << " "
 				<< p_pos_1 << " " << p_pos_2 << " " << p_pos_3 << " and new: "
 				<< _pos[0] << " " <<_pos[1] << " " << _pos[2] << " " << _pos[3]);
-			this->model->GetJointController()->SetPositionTarget(
-				this->joint_shoulder_L->GetScopedName(), _pos[0]);
-			this->model->GetJointController()->SetPositionTarget(
-				this->joint_shoulder_R->GetScopedName(), _pos[1]);
-			this->model->GetJointController()->SetJointPosition(
-				this->joint_hip_L->GetScopedName(), _pos[2]);
-			this->model->GetJointController()->SetPositionTarget(
-				this->joint_hip_R->GetScopedName(), _pos[3]);
+
+			if (this->no_pid) {
+				this->model->GetJointController()->SetJointPosition(
+					this->joint_shoulder_L->GetScopedName(), _pos[0]);
+				this->model->GetJointController()->SetJointPosition(
+					this->joint_shoulder_R->GetScopedName(), _pos[1]);
+				this->model->GetJointController()->SetJointPosition(
+					this->joint_hip_L->GetScopedName(), _pos[2]);
+				this->model->GetJointController()->SetJointPosition(
+					this->joint_hip_R->GetScopedName(), _pos[3]);
+			} else {
+				this->model->GetJointController()->SetPositionTarget(
+					this->joint_shoulder_L->GetScopedName(), _pos[0]);
+				this->model->GetJointController()->SetPositionTarget(
+					this->joint_shoulder_R->GetScopedName(), _pos[1]);
+				this->model->GetJointController()->SetPositionTarget(
+					this->joint_hip_L->GetScopedName(), _pos[2]);
+				this->model->GetJointController()->SetPositionTarget(
+					this->joint_hip_R->GetScopedName(), _pos[3]);
+			}
+			
 		}
 		
 
@@ -202,10 +224,10 @@ namespace gazebo
 		public: void GetSensors(float _sens[])
 		{
 			// Get joint position
-			_sens[0] = this->joint_shoulder_L->GetAngle(0).Radian();
-			_sens[1] = this->joint_shoulder_R->GetAngle(0).Radian();
-			_sens[2] = this->joint_hip_L->GetAngle(0).Radian();
-			_sens[3] = this->joint_hip_R->GetAngle(0).Radian();
+			_sens[0] = this->joint_elbow_L->GetAngle(0).Radian();
+			_sens[1] = this->joint_elbow_R->GetAngle(0).Radian();
+			_sens[2] = this->joint_knee_L->GetAngle(0).Radian();
+			_sens[3] = this->joint_knee_R->GetAngle(0).Radian();
 
 			// Add noise?
 
@@ -215,42 +237,17 @@ namespace gazebo
 		/// \brief Handle an incoming message from ROS
 		/// \param[in] _msg A float value that is used to set the actuators 
 		// positions
-		public: void OnRosMsg(const std_msgs::StringConstPtr &_msg)
+		public: void OnRosMsg(const tigrillo_ctrl::MotorsConstPtr &_msg)
 		{
-			// Convert JSON to array of gour floats 
+			// Convert message to array of four floats 
 			float position[4];
-			rapidjson::Document d;
 
-   			d.Parse(_msg->data.c_str());
-   			rapidjson::Value& FL = d["FL"];
-   			rapidjson::Value& FR = d["FR"];
-   			rapidjson::Value& BL = d["BL"];
-   			rapidjson::Value& BR = d["BR"];
-
-   			int ver = 0;
-   			if (FL.IsDouble()) {
-   				position[0] = FL.GetDouble();
-   				ver += 1;
-   			}
-   			if (FR.IsDouble()) {
-   				position[1] = FR.GetDouble();
-   				ver += 1;
-   			}
-   			if (BL.IsDouble()) {
-   				position[2] = BL.GetDouble();
-   				ver += 1;
-   			}
-   			if (BR.IsDouble()) {
-   				position[3] = BR.GetDouble();
-   				ver += 1;
-   			}
-
-   			if (ver == 4) {
-   				this->SetPositionTarget(position);
-   			} else {
-   				ROS_WARN_STREAM("The format stored in topic " << 
-   					this->ros_sub_name << " should be a dict of floats!");
-   			}
+   			position[0] = _msg->FL;
+   			position[1] = _msg->FR;
+   			position[2] = _msg->BL;
+   			position[3] = _msg->BR;
+   			
+   			this->SetPositionTarget(position);
 		}
 
 
@@ -260,24 +257,19 @@ namespace gazebo
 
 			while (this->ros_node->ok())
 			{
-				// Convert to json string
+				// Get sensors values
 				float sensors[4];
 				this->GetSensors(sensors);
-				rapidjson::Document d;
-				d.SetObject();
-				rapidjson::Document::AllocatorType& all = d.GetAllocator();
-				d.AddMember("FL", sensors[0], all);
-				d.AddMember("FR", sensors[1], all);
-				d.AddMember("BL", sensors[2], all);
-				d.AddMember("BR", sensors[3], all);
-				rapidjson::StringBuffer strbuf;
-				rapidjson::Writer<rapidjson::StringBuffer> writer(strbuf);
-				d.Accept(writer);
 
 	   			// Send over ROS
-	   			std_msgs::String msg;
-	   			msg.data = strbuf.GetString();
-	   			ROS_INFO_STREAM("Updating sensors: " << msg.data);
+	   			tigrillo_ctrl::Sensors msg;
+	   			msg.FL = sensors[0];
+	   			msg.FR = sensors[1];
+	   			msg.BL = sensors[2];
+	   			msg.BR = sensors[3];
+	   			msg.run_time = this->model->GetWorld()->GetSimTime().Double() ;
+	   			ROS_DEBUG_STREAM("Updating sensors: FL: " << msg.FL << " FR: " << 
+	   				msg.FR << " BL: " << msg.BL << " BR: " << msg.BR );
 				this->ros_pub.publish(msg);
 
 				// Wait till next time
@@ -309,7 +301,7 @@ namespace gazebo
 			// Create a named topic, and subscribe to it
 			ROS_INFO_STREAM("Subscribe to topic: " + this->ros_sub_name);
 			ros::SubscribeOptions so =
-			ros::SubscribeOptions::create<std_msgs::String>(
+			ros::SubscribeOptions::create<tigrillo_ctrl::Motors>(
 				this->ros_sub_name,
 				1,
 				boost::bind(&TigrilloPlugin::OnRosMsg, this, _1),
@@ -319,7 +311,7 @@ namespace gazebo
 			// Create a named topic for publication
 			ROS_INFO_STREAM("Publish in topic: " + this->ros_pub_name);
 			this->ros_pub = 
-				this->ros_node->advertise<std_msgs::String>(this->ros_pub_name, 1);
+				this->ros_node->advertise<tigrillo_ctrl::Sensors>(this->ros_pub_name, 1);
 
 			// Create a timer for publication
 			this->pub_rate.reset(new ros::Rate(this->pub_freq));
