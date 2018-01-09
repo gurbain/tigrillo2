@@ -13,11 +13,11 @@ data/analysis/*
 
 # Pictures and data
 *.csv
-*.png
 *.jpg
 *.jpeg
 *.pkl
 *.npy
+*cpg.png
 
 # Other built files
 *build*
