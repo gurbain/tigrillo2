@@ -15,6 +15,19 @@ include_directories(${GAZEBO_INCLUDE_DIRS})
 link_directories(${GAZEBO_LIBRARY_DIRS})
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GAZEBO_CXX_FLAGS}")
 
+# Find the packages generated in this project
+set(tigrillo_io_DIR  ${PROJECT_SOURCE_DIR}/../../devel/share/tigrillo_io/cmake/)
+set(tigrillo_ctrl_DIR  ${PROJECT_SOURCE_DIR}/../../devel/share/tigrillo_ctrl/cmake/)
+message(STATUS "Looking for tigrillo_io cmake in ${tigrillo_io_DIR}")
+message(STATUS "Looking for tigrillo_ctrl cmake in ${tigrillo_ctrl_DIR}")
+find_package(tigrillo_io REQUIRED)
+find_package(tigrillo_ctrl REQUIRED)
+
+include_directories(${tigrillo_io_INCLUDE_DIRS})
+include_directories(${tigrillo_ctrl_INCLUDE_DIRS})
+link_directories(${tigrillo_io_LIBRARY_DIRS})
+link_directories(${tigrillo_ctrl_LIBRARY_DIRS})
+
 # Build our plugin
 add_library(${PROJECT_NAME} SHARED tigrillo_plugin.cc)
 target_link_libraries(${PROJECT_NAME} ${GAZEBO_libraries} ${roscpp_LIBRARIES})

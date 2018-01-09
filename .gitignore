@@ -6,6 +6,7 @@ devel/*
 # Result files
 data/results/*
 data/configs/trained_ann/*
+data/analysis/*
 
 # Python compiled files
 *.pyc
@@ -15,6 +16,8 @@ data/configs/trained_ann/*
 *.png
 *.jpg
 *.jpeg
+*.pkl
+*.npy
 
 # Other built files
 *build*

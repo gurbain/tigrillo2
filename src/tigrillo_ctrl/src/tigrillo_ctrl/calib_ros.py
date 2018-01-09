@@ -8,7 +8,8 @@ import thread
 import time
 
 from tigrillo_ctrl.srv import Calibration, CalibrationResponse, Frequency, FrequencyResponse
-from tigrillo_ctrl import utils
+from tigrillo_ctrl.msg import Sensors, Motors, Imu
+from tigrillo_ctrl import utils, timing
 
 
 __author__ = "Gabriel Urbain" 
@@ -28,15 +29,18 @@ class CalibROS():
                  i2c_sens_filename="calib_i2c.json"):
         
         self.node_name = "tigrillo_calibration"
-        self.i2c_sub_name = "i2c_sensors"
-        self.uart_sub_name =  "uart_sensors"
+        self.i2c_sub_name = "tigrillo_rob/i2c_sensors"
+        self.uart_sub_name =  "tigrillo_rob/uart_sensors"
+        self.uart_pub_name =  "tigrillo_rob/uart_actuators"
 
         self.i2c_srv_cal_name = "i2c_save_cal"
         self.i2c_srv_cal = None
         self.uart_srv_sens_cal_name = "uart_save_sens_cal"
         self.uart_srv_sens_cal = None
-        self.uart_srv_act_cal_name = "uart_save_act_cal"
-        self.uart_srv_act_cal = None
+        self.uart_srv_act_cal_save_name = "uart_save_act_cal"
+        self.uart_srv_act_cal_load_name = "uart_load_act_cal"
+        self.uart_srv_act_cal_save = None
+        self.uart_srv_act_cal_load = None
         
         self.uart_sens_filename = uart_sens_filename
         self.uart_act_filename = uart_act_filename
@@ -54,7 +58,7 @@ class CalibROS():
         # Wait for the i2c node to be started, then subscribe to its topics
         print("\n === IMU Calibration ===\n")
         ros.logwarn("Waiting for the /tigrillo_io/i2cd node to be started...")
-        self.i2c_sub = ros.Subscriber(self.i2c_sub_name, String, callback=self.__i2c_ros_sub, queue_size=self.queue_size)
+        self.i2c_sub = ros.Subscriber(self.i2c_sub_name, Imu, callback=self.__i2c_ros_sub, queue_size=self.queue_size)
         ros.wait_for_service(self.i2c_srv_cal_name)
         self.i2c_srv_cal = ros.ServiceProxy(self.i2c_srv_cal_name, Calibration)
         ros.logwarn("Check!\n")
@@ -69,17 +73,17 @@ class CalibROS():
         # Display calibration status until finished
         while not ros.is_shutdown():
             if self.i2c_msg:
-                system =  self.i2c_msg['IMU Calib System']
-                gyro = self.i2c_msg['IMU Calib Gyroscope']
-                accel = self.i2c_msg['IMU Calib Accelerometer']
-                mag = self.i2c_msg['IMU Calib Magnetometer']
+                system =  self.i2c_msg.cal_sys
+                gyro = self.i2c_msg.cal_gyro
+                accel = self.i2c_msg.cal_acc
+                mag = self.i2c_msg.cal_mag
                 sys.stdout.write('Algo cal = {0}  Gyro cal = {1}  Accel cal = {2}  Mag cal = {3}\r'.format(system, gyro, accel, mag))
                 time.sleep(0.2)
 
-                if self.k_list:
-                    if self.k_list[-1] == '\n':
-                        self.k_list = []
-                        break
+            if self.k_list:
+                if self.k_list[-1] == '\n':
+                    self.k_list = []
+                    break
 
         # Call save calibration service
         print("\n")
@@ -101,8 +105,8 @@ class CalibROS():
         # Wait for the uart node to be started, then subscribe to its topics
         print("\n === Legs Sensors Calibration ===\n")
         ros.logwarn("Waiting for the /tigrillo_io/uartd node to be started...")
-        self.uart_sub = ros.Subscriber(self.uart_sub_name, String, callback=self.__uart_ros_sub, queue_size=self.queue_size)
         ros.wait_for_service(self.uart_srv_sens_cal_name)
+        self.uart_sub = ros.Subscriber(self.uart_sub_name, Sensors, callback=self.__uart_ros_sub, queue_size=self.queue_size)
         self.uart_srv_cal = ros.ServiceProxy(self.uart_srv_sens_cal_name, Calibration)
         while not self.uart_msg:
             time.sleep(0.2)
@@ -114,10 +118,10 @@ class CalibROS():
         # Display calibration status until finished
         i = 0
         while True:
-            BL = self.uart_msg["Back Left"]
-            BR = self.uart_msg["Back Right"]
-            FL = self.uart_msg["Front Left"]
-            FR = self.uart_msg["Front Right"]
+            BL = self.uart_msg.BL_raw
+            BR = self.uart_msg.BR_raw
+            FL = self.uart_msg.FL_raw
+            FR = self.uart_msg.FR_raw
             sys.stdout.write('BL = {0} BR = {1} FL = {2} FR = {3}             \r'.format(BL, BR, FL, FR))
 
             if i == 0:
@@ -161,10 +165,10 @@ class CalibROS():
         REAL_MAX = 135
         REAL_MIN = 30
         while True:
-            BL = REAL_MAX - (REAL_MAX - REAL_MIN) * (self.uart_msg["Back Left"] - BL_min) / (BL_min - BL_max)
-            BR = REAL_MAX - (REAL_MAX - REAL_MIN) * (self.uart_msg["Back Right"] - BR_min) / (BR_min - BR_max)
-            FL = REAL_MAX - (REAL_MAX - REAL_MIN) * (self.uart_msg["Front Left"] - FL_min) / (FL_min - FL_max)
-            FR = REAL_MAX - (REAL_MAX - REAL_MIN) * (self.uart_msg["Front Right"] - FR_min) / (FR_min - FR_max)
+            BL = REAL_MAX - (REAL_MAX - REAL_MIN) * (self.uart_msg.BL - BL_min) / (BL_min - BL_max)
+            BR = REAL_MAX - (REAL_MAX - REAL_MIN) * (self.uart_msg.BR - BR_min) / (BR_min - BR_max)
+            FL = REAL_MAX - (REAL_MAX - REAL_MIN) * (self.uart_msg.FL - FL_min) / (FL_min - FL_max)
+            FR = REAL_MAX - (REAL_MAX - REAL_MIN) * (self.uart_msg.FR - FR_min) / (FR_min - FR_max)
             sys.stdout.write('BL = {0} BR = {1} FL = {2} FR = {3}             \r'.format(BL, BR, FL, FR))
 
             time.sleep(0.01)
@@ -199,39 +203,67 @@ class CalibROS():
         if not "/gazebo/model_states" in  [item[0] for item in ros.get_published_topics()]:
             ros.logwarn("You must start the gazebo node to realize this calibration. Stopping...")
             return
-        # ros.logwarn("Waiting for the /tigrillo_io/uartd node to be started...")
-        # ros.wait_for_service(self.uart_srv_sens_cal_name)
-        # ros.logwarn("...Check!")
-        # self.uart_sub = ros.Subscriber(self.uart_sub_name, String, callback=self.__uart_ros_sub, queue_size=self.queue_size)
-        # self.uart_save_act_srv = ros.ServiceProxy(self.uart_srv_sens_cal_name, Calibration)
-        # self.uart_load_act_srv = ros.ServiceProxy(self.uart_srv_sens_cal_name, Calibration)
+        ros.logwarn("Waiting for the /tigrillo_io/uartd node to be started...")
+        ros.wait_for_service(self.uart_srv_sens_cal_name)
+        ros.logwarn("...Check!")
+        self.uart_pub = ros.Publisher(self.uart_pub_name, Motors, queue_size=self.queue_size)
+        self.uart_srv_act_cal_save = ros.ServiceProxy(self.uart_srv_act_cal_save_name, Calibration)
+        self.uart_srv_act_cal_load = ros.ServiceProxy(self.uart_srv_act_cal_load_name, Calibration)
         ros.loginfo("In gazebo, make sure the calibration world is loaded")
-        ros.loginfo("Press 1 to increase the front position of the robot actuators, 2 to decrease them. Press ENTER when finished!")
+        ros.loginfo("Press 1 to increase the front position of the robot actuators, 2 to decrease it. " 
+                    "Press 3 to increase the back position of the robot actuators, 4 to decrease it. "
+                    " Press ENTER when finished!")
         
-        # produce sine
-        t = 0
-        while True:
+        # Create a timer to ensure synchro with real-time
+        t = timing.Timer(real_time=True, runtime=50, dt=0.01)
+        t.start()
 
-            sine = 115 + 2 * math.sin(2 * math.pi * t)
-            t += 0.01
-            time.sleep(0.01)
+        while not t.is_finished():
+
+            sine = math.pi / 5 * math.sin(3 * t.st)
+            self.uart_pub.publish(run_time=t.st, FL=sine, FR=sine, BL=sine, BR=sine)
 
             if self.k_list:
                 if self.k_list[-1] == '1\n':
-                    print "a"
+                    print "Increase front position"
                     self.k_list = []
-                    # Save with mode actuation
-                    # Load it
+                    ack = self.uart_srv_act_cal_load(data="", filename=self.uart_act_filename)
+                    val = json.loads(ack.calib)
+                    val["offset"] += 5
+                    self.uart_srv_act_cal_save(data=json.dumps(val), filename=self.uart_act_filename)
 
                 elif self.k_list[-1] == '2\n':
-                    print "b"
+                    print "Decrease front position"
                     self.k_list = []
-                    # Save with less actuation
-                    # Load it
+                    ack = self.uart_srv_act_cal_load(data="", filename=self.uart_act_filename)
+                    val = json.loads(ack.calib)
+                    val["offset"] -= 5
+                    self.uart_srv_act_cal_save(data=json.dumps(val), filename=self.uart_act_filename)
+
+                elif self.k_list[-1] == '3\n':
+                    print "Increase back position"
+                    self.k_list = []
+                    ack = self.uart_srv_act_cal_load(data="", filename=self.uart_act_filename)
+                    val = json.loads(ack.calib)
+                    val["offset"] -= 2.5
+                    val["mul_factor"] += 25 / (2 * math.pi)
+                    self.uart_srv_act_cal_save(data=json.dumps(val), filename=self.uart_act_filename)
+
+                elif self.k_list[-1] == '4\n':
+                    print "Decrease back position"
+                    self.k_list = []
+                    ack = self.uart_srv_act_cal_load(data="", filename=self.uart_act_filename)
+                    val = json.loads(ack.calib)
+                    val["offset"] += 2.5
+                    val["mul_factor"] -= 25 / (2 * math.pi)
+                    self.uart_srv_act_cal_save(data=json.dumps(val), filename=self.uart_act_filename)
 
                 elif self.k_list[-1] == '\n':
                     self.k_list = []
                     break
+
+            # Update timers and pause if needed
+            t.update()
 
     def __wait_for_key(self):
 
@@ -241,11 +273,11 @@ class CalibROS():
 
     def __uart_ros_sub(self, msg):
 
-        self.uart_msg = utils.dict_keys_to_str(json.loads(msg.data))
+        self.uart_msg = msg
 
     def __i2c_ros_sub(self, msg):
 
-        self.i2c_msg = utils.dict_keys_to_str(json.loads(msg.data))
+        self.i2c_msg = msg
 
     def start(self):
 
