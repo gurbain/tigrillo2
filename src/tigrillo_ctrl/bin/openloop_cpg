@@ -61,4 +61,3 @@ if __name__ == '__main__':
 
     # Terminate experiment
     t.print_info()
-    ctl.plot("cpg.png")

@@ -1,8 +1,4 @@
 
-from tigrillo_io.srv import Calibration, CalibrationResponse, Frequency, FrequencyResponse
-import tigrillo_io
-from tigrillo_io import BNO055, utils
-
 import datetime
 import json
 import time
@@ -11,6 +7,11 @@ import rospy as ros
 from rospy_message_converter import message_converter
 from std_msgs.msg import String
 from std_srvs.srv import *
+
+from tigrillo_io.srv import Calibration, CalibrationResponse, Frequency, FrequencyResponse
+from tigrillo_io.msg import Sensors, Motors, Imu
+import tigrillo_io
+from tigrillo_io import BNO055, utils
 
 
 __author__ = "Gabriel Urbain" 
@@ -105,12 +106,12 @@ class I2CSensors:
 
 class I2CROS():
 
-    def __init__(self, i2c_rst_pin="18", pub_freq="5", calib_i2c="calib_i2c.json", 
+    def __init__(self, i2c_rst_pin="18", pub_freq=50, calib_i2c="calib_i2c.json", 
                  save_all=True, data_folder=None):
 
         # ROS parameters
         self.node_name = "i2c"
-        self.pub_name = "i2c_sensors"
+        self.pub_name = "tigrillo_rob/i2c_sensors"
         self.srv_freq_name = "i2c_set_sens_freq"
         self.srv_save_cal_name = "i2c_save_cal"
         self.srv_load_cal_name = "i2c_load_cal"
@@ -150,7 +151,7 @@ class I2CROS():
         nows = datetime.datetime.now()
         if self.date_zero_s is None:
             self.date_zero_s = nows.minute*60 + nows.second + nows.microsecond/1000000.0
-        measure["Run Time"] = str(nows.minute*60 + nows.second + nows.microsecond/1000000.0 - self.date_zero_s)
+        measure["Run Time"] = float(nows.minute*60 + nows.second + nows.microsecond/1000000.0 - self.date_zero_s)
 
         if self.save_all:
             utils.save_csv_row(measure, self.file_s, self.sensors_index)
@@ -160,10 +161,23 @@ class I2CROS():
 
     def __ros_pub(self):
 
+        rate = ros.Rate(self.pub_rate)
+
         while not ros.is_shutdown():
-            rate = ros.Rate(self.pub_rate)
             measure = self.get_last_sensors()
-            self.pub.publish(json.dumps(measure))
+            keys = ['IMU IO Time', 'IMU Calib Magnetometer', 'Run Time', 'IMU Calib Accelerometer',
+                    'Acceleration Z', 'Acceleration X', 'Acceleration Y', 'Heading', 'IMU Calib Gyroscope',
+                    'IMU Time Stamp', 'Gravity Z', 'Gravity Y', 'Gravity X', 'Roll', 'Pitch',
+                    'IMU Calib System']
+            if all(name in measure for name in keys):
+                self.pub.publish(acc_x=measure['Acceleration X'], acc_y=measure['Acceleration Y'], 
+                                 acc_z=measure['Acceleration Z'],  grav_x=measure['Gravity X'], 
+                                 grav_y=measure['Gravity Y'], grav_z=measure['Gravity Z'], 
+                                 h=measure['Heading'], r=measure['Roll'],
+                                 p=measure['Pitch'], cal_sys=measure['IMU Calib System'],
+                                 cal_acc=measure['IMU Calib Accelerometer'], cal_gyro=measure['IMU Calib Gyroscope'],
+                                 cal_mag=measure['IMU Calib Magnetometer'], io_time=measure['IMU IO Time'],
+                                 run_time=measure['Run Time'], time_stamp=measure['IMU Time Stamp'])
             rate.sleep()
 
         return
@@ -194,7 +208,7 @@ class I2CROS():
     def start_ros_node(self):
 
         ros.init_node(self.node_name, log_level=ros.INFO)
-        self.pub = ros.Publisher(self.pub_name, String, queue_size=self.queue_size)
+        self.pub = ros.Publisher(self.pub_name, Imu, queue_size=self.queue_size)
         self.srv_save_cal = ros.Service(self.srv_save_cal_name, Calibration, self.__ros_save_cal_srv)
         self.srv_load_cal = ros.Service(self.srv_load_cal_name, Calibration, self.__ros_load_cal_srv)
         self.srv_freq = ros.Service(self.srv_freq_name, Frequency, self.__ros_freq_srv)
