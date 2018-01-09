@@ -5,6 +5,7 @@ import time
 from std_msgs.msg import String
 from std_srvs.srv import Trigger
 
+
 from tigrillo_ctrl.srv import Frequency, FrequencyResponse
 from tigrillo_ctrl.msg import Sensors, Motors, Imu
 from tigrillo_ctrl import utils
@@ -21,13 +22,14 @@ __status__ = "Research"
 __date__ = "November 25th, 2017"
 
 
+
 class CTRLROS():
 
     def __init__(self):
         
         self.node_name = "tigrillo"
-        self.uart_pub_name = "uart_actuators"
-        self.uart_sub_name = "uart_sensors"
+        self.uart_pub_name = "tigrillo_rob/uart_actuators"
+        self.uart_sub_name = "tigrillo_rob/uart_sensors"
         self.i2c_sub_name = "i2c_sensors"
         self.i2c_srv_freq_name = "i2c_set_sens_freq"
         self.i2c_srv_cal_name = "i2c_save_cal"
@@ -103,7 +105,9 @@ class CTRLROS():
 
     def __uart_ros_sub(self, msg):
 
-        self.uart_sensors = utils.dict_keys_to_str(json.loads(msg.data))
+        self.uart_sensors = {"Front Right": msg.FR, "Front Left": msg.FL, "Back Right": msg.BR, 
+                             "Back Left": msg.BL, "Run Time": msg.run_time, "UART IO Time": msg.io_time,
+                             "UART Loop Time": msg.loop_time, "UART Time Stamp": msg.ocm_time}
         ros.logdebug("UART sensor update received: " + str(self.uart_sensors))
 
     def __i2c_ros_sub(self, msg):

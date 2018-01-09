@@ -12,6 +12,13 @@ add_service_files(DIRECTORY srv
                   FILES
                   Calibration.srv
                   Frequency.srv)
+                  
+add_message_files(DIRECTORY msg
+				  FILES
+				  Sensors.msg
+				  Imu.msg
+				  Motors.msg
+)
 
 catkin_python_setup()
 
