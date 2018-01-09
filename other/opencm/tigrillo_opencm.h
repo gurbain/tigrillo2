@@ -36,7 +36,7 @@
 #define ACT_ID_BR 4
 
 #define MIN_SENS_READ_TIME 2000
-#define DEF_SENS_READ_TIME 20000
+#define DEF_SENS_READ_TIME 40000
 #define SENS_NUM 4
 #define SENS_PIN_FL 0
 #define SENS_PIN_FR 3
