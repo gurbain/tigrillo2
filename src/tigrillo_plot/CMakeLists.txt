@@ -1,4 +1,4 @@
-project(plotjuggler)
+project(tigrillo_plot)
 cmake_minimum_required(VERSION 2.8)
 
 # http://answers.ros.org/question/230877/optionally-build-a-package-with-catkin/
@@ -119,7 +119,7 @@ endif()
 
 SET(CPACK_PACKAGE_CONTACT "davide.faconti@gmail.com")
 
-SET(CPACK_PACKAGE_NAME "plotjuggler${CPACK_DEBIAN_PACKAGE_ARCHITECTURE}")
+SET(CPACK_PACKAGE_NAME "tigrillo_plot${CPACK_DEBIAN_PACKAGE_ARCHITECTURE}")
 SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "PlotJuggler: juggle with data")
 SET(CPACK_PACKAGE_VERSION_MAJOR ${PLOTJUGGLER_VERSION_MAJOR} )
 SET(CPACK_PACKAGE_VERSION_MINOR ${PLOTJUGGLER_VERSION_MINOR} )
