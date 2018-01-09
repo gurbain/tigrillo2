@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
-<name>plotjuggler</name>
+<name>tigrillo_plot</name>
 <version>1.5.0</version>
-<description>PlotJuggler: juggle with data</description>
+<description>Forked version of PlotJuggler only for research purpose</description>
 
 <maintainer email="davide.faconti@gmail.com">Davide Faconti</maintainer>
 <license>LGPLv3</license>
