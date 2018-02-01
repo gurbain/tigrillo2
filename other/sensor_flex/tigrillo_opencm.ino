@@ -26,7 +26,6 @@ HardwareTimer Timer(TIMER_1);
 // Sensors variables
 long sens_period = DEF_SENS_READ_TIME;
 long sens_timestamp = 0;
-int sens_foot_zero[SENS_NUM];
 int sens_val[SENS_NUM];
 
 // Actuators variables
@@ -77,7 +76,7 @@ void setup() {
 void loop() {
 
 	// Nothing to do in the main loop
-	delay(300);
+	delay(10);
 
 }
 
@@ -96,80 +95,80 @@ void processRx(byte* buffer, byte size) {
 		if (size > 1) {
 			int act_leg[MAX_ARG_SIZE];
 			int res = str2i((char*)(buffer+1), act_leg, ACT_NUM);
-			if (res != 0) {
-				wait4Bus();
-				if  (res == -1)
-					Serial2.println("{'ACK': {'Instruction': 'A', 'Data': 'Error: Too few numbers in argument list!'}}");
-				else if (res == -2)
-					Serial2.println("{'ACK': {'Instruction': 'A', 'Data': 'Error: Too many numbers in argument list!'}}");
-				else if (res == -3)
-					Serial2.println("{'ACK': {'Instruction': 'A', 'Data': 'Error: Wrong character in argument list!'}}");
-				else if (res == -4)
-					Serial2.println("{'ACK': {'Instruction': 'A', 'Data': 'Error: Unknown!'}}");
-				freeBus();
-				break; 
-			}
+			// if (res != 0) {
+			// 	wait4Bus();
+			// 	if  (res == -1)
+			// 		Serial2.println("{'ACK': {'Instruction': 'A', 'Data': 'Error: Too few numbers in argument list!'}}");
+			// 	else if (res == -2)
+			// 		Serial2.println("{'ACK': {'Instruction': 'A', 'Data': 'Error: Too many numbers in argument list!'}}");
+			// 	else if (res == -3)
+			// 		Serial2.println("{'ACK': {'Instruction': 'A', 'Data': 'Error: Wrong character in argument list!'}}");
+			// 	else if (res == -4)
+			// 		Serial2.println("{'ACK': {'Instruction': 'A', 'Data': 'Error: Unknown!'}}");
+			// 	freeBus();
+			// 	break; 
+			// }
 			updateMotors(act_leg);
-			wait4Bus();
-			char text[120];
-			sprintf(text, "{'ACK': {'Instruction': 'A', 'Data': 'Success: %i %i %i %i !'}}", act_leg[0], act_leg[1], act_leg[2], act_leg[3]);
-			Serial2.println(text);
-			freeBus();
-		} else {
-			wait4Bus();
-			Serial2.println("{'ACK': {'Instruction': 'A', 'Data': 'Error: Too few arguments!'}}");
-			freeBus();
-		}
+			//wait4Bus();
+			//char text[120];
+			// sprintf(text, "{'ACK': {'Instruction': 'A', 'Data': 'Success: %i %i %i %i !'}}", act_leg[0], act_leg[1], act_leg[2], act_leg[3]);
+			// Serial2.println(text);
+			//freeBus();
+		} //else {
+		// 	wait4Bus();
+		// 	Serial2.println("{'ACK': {'Instruction': 'A', 'Data': 'Error: Too few arguments!'}}");
+		// 	freeBus();
+		// }
 		break;
 		
-	case 'R':
-		resetSensors();
-		wait4Bus();
-		Serial2.println("{'ACK': {'Instruction': 'R', 'Data': 'Success!'}}");
-		freeBus();
-		break;
+	//case 'R':
+		//resetSensors();
+		// wait4Bus();
+		// Serial2.println("{'ACK': {'Instruction': 'R', 'Data': 'Success!'}}");
+		// freeBus();
+		//break;
 		
 	case 'F':
 		if (size > 1) {
 			int period[1] = {DEF_SENS_READ_TIME};
 			int res1 = str2i((char*)(buffer+1), period, 1);
-			if (res1 != 0) {
-				wait4Bus();
-				if  (res1 == -1)
-					Serial2.println("{'ACK': {'Instruction': 'F', 'Data': 'Error: Too few numbers in argument list!'}}");
-				else if (res1 == -2)
-					Serial2.println("{'ACK': {'Instruction': 'F', 'Data': 'Error: Too many numbers in argument list!'}}");
-				else if (res1 == -3)
-					Serial2.println("{'ACK': {'Instruction': 'A', 'Data': 'Error: Wrong character in argument list!'}}");
-				else if (res1 == -4)
-					Serial2.println("{'ACK': {'Instruction': 'A', 'Data': 'Error: Unknown!'}}");
-				freeBus();
-				break; 
-			}
+			// if (res1 != 0) {
+			// 	wait4Bus();
+			// 	if  (res1 == -1)
+			// 		Serial2.println("{'ACK': {'Instruction': 'F', 'Data': 'Error: Too few numbers in argument list!'}}");
+			// 	else if (res1 == -2)
+			// 		Serial2.println("{'ACK': {'Instruction': 'F', 'Data': 'Error: Too many numbers in argument list!'}}");
+			// 	else if (res1 == -3)
+			// 		Serial2.println("{'ACK': {'Instruction': 'A', 'Data': 'Error: Wrong character in argument list!'}}");
+			// 	else if (res1 == -4)
+			// 		Serial2.println("{'ACK': {'Instruction': 'A', 'Data': 'Error: Unknown!'}}");
+			// 	freeBus();
+			// 	break; 
+			// }
 			int res2 = changePeriod(period[0]);
-			wait4Bus();
-			if (res2 == 0) {
-				char text[120];
-				sprintf(text, "{'ACK': {'Instruction': 'F', 'Data': 'Success: Sensor reading period changed to %i microseconds!'}}", period[0]);
-				Serial2.println(text);
-			}
-			else {
-				char text[120];
-				sprintf(text, "{'ACK': {'Instruction': 'F', 'Data': 'Error: Period is too short. Please, use higher than %i microseconds!'}}", MIN_SENS_READ_TIME);
-				Serial2.println(text);
-			}
-			freeBus();
-		} else {
-			wait4Bus();
-			Serial2.println("{'ACK': {'Instruction': 'F', 'Data': 'Error: Too few arguments!'}}");
-			freeBus();
-		}
+			// wait4Bus();
+			// if (res2 == 0) {
+			// 	char text[120];
+			// 	sprintf(text, "{'ACK': {'Instruction': 'F', 'Data': 'Success: Sensor reading period changed to %i microseconds!'}}", period[0]);
+			// 	Serial2.println(text);
+			// }
+			// else {
+			// 	char text[120];
+			// 	sprintf(text, "{'ACK': {'Instruction': 'F', 'Data': 'Error: Period is too short. Please, use higher than %i microseconds!'}}", MIN_SENS_READ_TIME);
+			// 	Serial2.println(text);
+			// }
+			// freeBus();
+		} //else {
+		// 	wait4Bus();
+		// 	Serial2.println("{'ACK': {'Instruction': 'F', 'Data': 'Error: Too few arguments!'}}");
+		// 	freeBus();
+		// }
 		break;
 		
 	default:
-		wait4Bus();
-		Serial2.println("{'ACK': {'Instruction': 'D', 'Data': 'Error: Instruction not recognised!'}}");
-		freeBus();
+		// wait4Bus();
+		// Serial2.println("{'ACK': {'Instruction': 'D', 'Data': 'Error: Instruction not recognised!'}}");
+		// freeBus();
 		break;
 	}
 
@@ -191,25 +190,12 @@ void readSensors(void) {
 	sens_val[3] = analogRead(SENS_PIN_BR);
 
 	// Send over USB serial the sensors and timing information
-	wait4Bus();
 	char text[300];
 	long operation_time = micros();
 	sprintf(text, "{'DATA': {'Sensors values': {'Front Left': %i, 'Front Right': %i, 'Back Left': %i,  'Back Right': %i}, 'Time Stamp': %ld, 'Previous Time Stamp': %ld, 'End of Reading Time Stamp': %ld}}", 
-			sens_val[0] - sens_foot_zero[0], sens_val[1] - sens_foot_zero[1], sens_val[2] - sens_foot_zero[2], sens_val[3] - sens_foot_zero[3], current_timestamp, sens_timestamp, operation_time);
+			sens_val[0], sens_val[1], sens_val[2] , sens_val[3], current_timestamp, sens_timestamp, operation_time);
 	Serial2.println(text);
-	freeBus();
 	sens_timestamp = current_timestamp;
-}
-
-
-void resetSensors(void) {
-
-	// Get sensors values and setup as new zeros
-	sens_foot_zero[0] = analogRead(SENS_PIN_FL);
-	sens_foot_zero[1] = analogRead(SENS_PIN_FR);
-	sens_foot_zero[2] = analogRead(SENS_PIN_BL);
-	sens_foot_zero[3] = analogRead(SENS_PIN_BR);
-
 }
 
 
@@ -221,12 +207,12 @@ void updateMotors(int act_leg[]) {
 	int ra = SERVO_RANGE;
 	
 	// Right legs
-	Dxl.writeWord(ACT_ID_FR, GOAL_POS_SLACK, (mi + act_leg[ACT_ID_FR-1] * in / ra));
-	Dxl.writeWord(ACT_ID_BR, GOAL_POS_SLACK, (mi + act_leg[ACT_ID_BR-1] * in / ra));
+	Dxl.writeWord(ACT_ID_FR, GOAL_POS_ADDR, (mi + act_leg[ACT_ID_FR-1] * in / ra));
+	Dxl.writeWord(ACT_ID_BR, GOAL_POS_ADDR, (mi + act_leg[ACT_ID_BR-1] * in / ra));
 	
 	// Left legs
-	Dxl.writeWord(ACT_ID_FL, GOAL_POS_SLACK, (ma - act_leg[ACT_ID_FL-1] * in / ra));
-	Dxl.writeWord(ACT_ID_BL, GOAL_POS_SLACK, (ma - act_leg[ACT_ID_BL-1] * in / ra));
+	Dxl.writeWord(ACT_ID_FL, GOAL_POS_ADDR, (ma - act_leg[ACT_ID_FL-1] * in / ra));
+	Dxl.writeWord(ACT_ID_BL, GOAL_POS_ADDR, (ma - act_leg[ACT_ID_BL-1] * in / ra));
 
 }
 
