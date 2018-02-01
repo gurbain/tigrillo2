@@ -31,11 +31,8 @@ if __name__ == '__main__':
     while not t.is_finished():
 
         # Produce actuators control signal manually
-        FL = -math.pi / 2 * math.sin(t.st)
-        FR = math.pi / 2 * math.sin(t.st)
-        BL = math.pi / 2 * math.sin(t.st)
-        BR = -math.pi / 2 * math.sin(t.st)
-        command = [FL, FR, BL, BR]
+        sine = math.pi / 8 * math.sin(3 * t.st)
+        command = [sine, sine, sine, sine]
 
         # Update the robot actuators
         rob.update_actuators(command, t.st)
