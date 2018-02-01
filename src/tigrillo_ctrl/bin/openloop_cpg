@@ -21,7 +21,7 @@ __status__ = "Research"
 __date__ = "December 5th, 2017"
 
 
-DEFAULT_CONFIG = utils.CONFIG_FOLDER + "/walk_ol.cfg"
+DEFAULT_CONFIG = utils.CONFIG_FOLDER + "/run_ol.cfg"
 
 
 if __name__ == '__main__':
@@ -48,6 +48,10 @@ if __name__ == '__main__':
 
         # Produce actuators control signal
         command = ctl.step(t.st)
+        i = 0
+        for c in command:
+            command[i] = c / 180 * 3.14159 + 0.5
+            i += 1
 
         # Update the robot actuators
         rob.update_actuators(command, t.st)

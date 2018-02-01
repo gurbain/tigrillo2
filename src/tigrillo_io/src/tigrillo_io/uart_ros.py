@@ -3,6 +3,7 @@ import datetime
 import json
 import time
 import os
+from scipy.interpolate import interp1d
 
 import rospy as ros
 from rospy_message_converter import message_converter
@@ -32,7 +33,10 @@ class UARTSensors:
     def __init__(self, uart):
 
         self.uart = uart
-        self.calibration_data = None
+        self.f_fr = None
+        self.f_fl = None
+        self.f_br = None
+        self.f_bl = None
 
     def start(self, calib_file):
 
@@ -72,19 +76,22 @@ class UARTSensors:
     def load_calib(self, file):
 
         data = utils.load_calib_file(file)
-        self.calibration_data = data
+        self.f_fr = interp1d(data["fr"], data["a_fr"], kind='cubic')
+        self.f_fl = interp1d(data["fl"], data["a_fl"], kind='cubic')
+        self.f_br = interp1d(data["br"], data["a_br"], kind='cubic')
+        self.f_bl = interp1d(data["bl"], data["a_bl"], kind='cubic')
 
         ros.logwarn("UART sensors calibration loaded from file!")
 
     def save_calib(self, data, file):
 
-        utils.save_calib_file(data, file)
+        utils.save_calib_file(json.dumps(data), file)
         ros.logwarn("UART sensors calibration saved in file!")
 
     def get_measure(self):
 
         measure = self.uart.read_data()
-        print measure,  self.calibration_data
+
         if not measure:
             measure = dict()
             ros.loginfo("Cannot retrieve UART sensor data! Please increase sensor reading period!")
@@ -243,15 +250,37 @@ class UARTROS():
     def __ros_pub(self):
 
         rate = ros.Rate(self.pub_rate)
+        # while not ros.is_shutdown():
+        #     measure = self.get_last_sensors()
+        #     keys = ["Front Left", "Front Right", "Back Left", "Back Right", "UART IO Time", "Run Time", 
+        #             "UART Loop Time", "UART Time Stamp"]
+
+        #     if all(name in measure for name in keys):
+                
+        #         FL_raw = measure["Front Left"]
+        #         FR_raw = measure["Front Right"]
+        #         BL_raw = measure["Back Left"]
+        #         BR_raw = measure["Back Right"]
+        #         self.pub.publish(FL_raw=FL_raw, FR_raw=FR_raw, BL_raw=BL_raw,  BR_raw=BR_raw,
+        #                          FL=self.sensors.f_fl(FL_raw), FR=self.sensors.f_fr(FR_raw), 
+        #                          BL=self.sensors.f_bl(BL_raw),  BR=self.sensors.f_br(BR_raw), 
+        #                          io_time=measure["UART IO Time"], run_time=measure["Run Time"],
+        #                          loop_time=measure["UART Loop Time"], ocm_time=measure["UART Time Stamp"])
         while not ros.is_shutdown():
             measure = self.get_last_sensors()
-            keys = ["Front Left", "Front Right", "Back Left", "Back Right", "UART IO Time", "Run Time", 
-                    "UART Loop Time", "UART Time Stamp"] 
+            keys = ["Front Left", "Front Right", "Back Left", "Back Right"]
+
             if all(name in measure for name in keys):
-                self.pub.publish(FL=measure["Front Left"], FR=measure["Front Right"], 
-                                 BL=measure["Back Left"],  BR=measure["Back Right"], 
-                                 io_time=measure["UART IO Time"], run_time=measure["Run Time"], 
-                                 loop_time=measure["UART Loop Time"], ocm_time=measure["UART Time Stamp"])
+                
+                FL_raw = measure["Front Left"]
+                FR_raw = measure["Front Right"]
+                BL_raw = measure["Back Left"]
+                BR_raw = measure["Back Right"]
+                self.pub.publish(FL_raw=FL_raw, FR_raw=FR_raw, BL_raw=BL_raw,  BR_raw=BR_raw,
+                                 FL=self.sensors.f_fl(FL_raw), FR=self.sensors.f_fr(FR_raw), 
+                                 BL=self.sensors.f_bl(BL_raw),  BR=self.sensors.f_br(BR_raw), 
+                                 io_time=0, run_time=0,
+                                 loop_time=0, ocm_time=0)
             rate.sleep()
 
         return
