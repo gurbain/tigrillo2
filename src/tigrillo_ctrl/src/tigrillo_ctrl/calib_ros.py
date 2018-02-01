@@ -106,11 +106,12 @@ class CalibROS():
         print("\n === Legs Sensors Calibration ===\n")
         ros.logwarn("Waiting for the /tigrillo_io/uartd node to be started...")
         ros.wait_for_service(self.uart_srv_sens_cal_name)
+        ros.logwarn("Check!\n")
         self.uart_sub = ros.Subscriber(self.uart_sub_name, Sensors, callback=self.__uart_ros_sub, queue_size=self.queue_size)
         self.uart_srv_cal = ros.ServiceProxy(self.uart_srv_sens_cal_name, Calibration)
-        while not self.uart_msg:
+
+        while not self.uart_msg and not ros.is_shutdown():
             time.sleep(0.2)
-        ros.logwarn("Check!\n")
 
         # Display calibration informations
         ros.loginfo("To calibrate the legs, move them manually to their minimal and maximal positions then press ENTER.")
@@ -162,13 +163,13 @@ class CalibROS():
         # Test the angle values
         print("\n")
         ros.loginfo("Test the angle values and press ENTER!")
-        REAL_MAX = 135
-        REAL_MIN = 30
+        REAL_MAX = float(105) / 180 * math.pi
+        REAL_MIN = float(0) / 180 * math.pi
         while True:
-            BL = REAL_MAX - (REAL_MAX - REAL_MIN) * (self.uart_msg.BL - BL_min) / (BL_min - BL_max)
-            BR = REAL_MAX - (REAL_MAX - REAL_MIN) * (self.uart_msg.BR - BR_min) / (BR_min - BR_max)
-            FL = REAL_MAX - (REAL_MAX - REAL_MIN) * (self.uart_msg.FL - FL_min) / (FL_min - FL_max)
-            FR = REAL_MAX - (REAL_MAX - REAL_MIN) * (self.uart_msg.FR - FR_min) / (FR_min - FR_max)
+            BL = REAL_MIN + (REAL_MAX - REAL_MIN) * (self.uart_msg.BL_raw - BL_min) / (BL_max - BL_min)
+            BR = REAL_MIN + (REAL_MAX - REAL_MIN) * (self.uart_msg.BR_raw - BR_min) / (BR_max - BR_min)
+            FL = REAL_MIN + (REAL_MAX - REAL_MIN) * (self.uart_msg.FL_raw - FL_min) / (FL_max - FL_min)
+            FR = REAL_MIN + (REAL_MAX - REAL_MIN) * (self.uart_msg.FR_raw - FR_min) / (FR_max - FR_min)
             sys.stdout.write('BL = {0} BR = {1} FL = {2} FR = {3}             \r'.format(BL, BR, FL, FR))
 
             time.sleep(0.01)
@@ -181,7 +182,7 @@ class CalibROS():
         # Call save calibration service
         print("\n")
         data = json.dumps({"Real Max": REAL_MAX, "Real Min": REAL_MIN, "Back Left Max": BL_max,
-                           "Back Left Min": BL_min, "Back Right Max": BR_max, "Back Right Max": BR_min, 
+                           "Back Left Min": BL_min, "Back Right Max": BR_max, "Back Right Min": BR_min, 
                            "Front Left Max": FL_max, "Front Left Min": FL_min, "Front Right Max": FR_max,
                            "Front Right Min": FR_min})
         ack = self.uart_srv_cal(data=data, filename=self.uart_sens_filename)
@@ -220,7 +221,7 @@ class CalibROS():
 
         while not t.is_finished():
 
-            sine = math.pi / 5 * math.sin(3 * t.st)
+            sine = math.pi / 10 * math.sin(3 * t.st)
             self.uart_pub.publish(run_time=t.st, FL=sine, FR=sine, BL=sine, BR=sine)
 
             if self.k_list:
