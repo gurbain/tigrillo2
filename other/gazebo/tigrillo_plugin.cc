@@ -184,10 +184,10 @@ namespace gazebo
 		public: void SetPositionTarget(float _pos[])
 		{
 			// Set the joint's target position.
-			float p_pos_0 = this->joint_shoulder_L->GetAngle(0).Radian();
-			float p_pos_1 = this->joint_shoulder_R->GetAngle(0).Radian();
-			float p_pos_2 = this->joint_hip_L->GetAngle(0).Radian();
-			float p_pos_3 = this->joint_hip_R->GetAngle(0).Radian();
+			float p_pos_0 = this->joint_shoulder_L->GetAngle(0).Degree();
+			float p_pos_1 = this->joint_shoulder_R->GetAngle(0).Degree();
+			float p_pos_2 = this->joint_hip_L->GetAngle(0).Degree();
+			float p_pos_3 = this->joint_hip_R->GetAngle(0).Degree();
 			ROS_DEBUG_STREAM("Updating position. Previous " << p_pos_0 << " "
 				<< p_pos_1 << " " << p_pos_2 << " " << p_pos_3 << " and new: "
 				<< _pos[0] << " " <<_pos[1] << " " << _pos[2] << " " << _pos[3]);
@@ -220,10 +220,10 @@ namespace gazebo
 		public: void GetSensors(float _sens[])
 		{
 			// Get joint position
-			_sens[0] = this->joint_elbow_L->GetAngle(0).Radian();
-			_sens[1] = this->joint_elbow_R->GetAngle(0).Radian();
-			_sens[2] = this->joint_knee_L->GetAngle(0).Radian();
-			_sens[3] = this->joint_knee_R->GetAngle(0).Radian();
+			_sens[0] = this->joint_elbow_L->GetAngle(0).Degree();
+			_sens[1] = this->joint_elbow_R->GetAngle(0).Degree();
+			_sens[2] = this->joint_knee_L->GetAngle(0).Degree();
+			_sens[3] = this->joint_knee_R->GetAngle(0).Degree();
 
 			// Add noise?
 
