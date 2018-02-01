@@ -18,27 +18,23 @@
 #include "tigrillo_ctrl/Imu.h"
 #include "tigrillo_ctrl/Sensors.h"
 
-#include "rapidjson/document.h"
-#include "rapidjson/stringbuffer.h"
-#include "rapidjson/writer.h"
-
 namespace gazebo
 {
-	/// \brief A plugin to control a Tigrillo quadruped with ROS.
-	class TigrilloPlugin : public ModelPlugin
+	/// \brief A plugin to control a Tigrillo2 quadruped with ROS.
+	class Tigrillo2Plugin : public ModelPlugin
 	{
 		/// \brief Pointer to the model.
 		private: physics::ModelPtr model;
 		
 		/// \brief Name of the joints.
-		std::string name_shoulder_L = "left_shoulder";
-		std::string name_shoulder_R = "right_shoulder";
-		std::string name_hip_L = "left_hip";
-		std::string name_hip_R = "right_hip";
-		std::string name_elbow_L = "left_elbow";
-		std::string name_elbow_R = "right_elbow";
-		std::string name_knee_L = "left_knee";
-		std::string name_knee_R = "right_knee";
+		std::string name_shoulder_L = "FLUJ";
+		std::string name_shoulder_R = "FRUJ";
+		std::string name_hip_L = "BLUJ";
+		std::string name_hip_R = "BRUJ";
+		std::string name_elbow_L = "FLDJ";
+		std::string name_elbow_R = "FRDJ";
+		std::string name_knee_L = "BLDJ";
+		std::string name_knee_R = "BRDJ";
 
 		/// \brief Pointers to the joints.
 		private: physics::JointPtr joint_shoulder_L;
@@ -58,7 +54,7 @@ namespace gazebo
 		private: bool no_pid = false;
 		
 		/// \brief Constructor
-		public: TigrilloPlugin() {}
+		public: Tigrillo2Plugin() {}
 		
 		/// \brief A node use for ROS transport and its name
 		private: std::unique_ptr<ros::NodeHandle> ros_node;
@@ -91,7 +87,7 @@ namespace gazebo
 		public: virtual void Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 		{
 
-			ROS_INFO("Loading Tigrillo ROS plugin");
+			ROS_INFO("Loading Tigrillo2 ROS plugin");
 			ROS_INFO_STREAM("Gazebo is using the physics engine: " <<
 			_model->GetWorld()->GetPhysicsEngine()->GetType());
 
@@ -304,7 +300,7 @@ namespace gazebo
 			ros::SubscribeOptions::create<tigrillo_ctrl::Motors>(
 				this->ros_sub_name,
 				1,
-				boost::bind(&TigrilloPlugin::OnRosMsg, this, _1),
+				boost::bind(&Tigrillo2Plugin::OnRosMsg, this, _1),
 				ros::VoidPtr(), &this->ros_queue);
 			this->ros_sub = this->ros_node->subscribe(so);
 
@@ -318,11 +314,11 @@ namespace gazebo
 
 			// Spin up the queue helper thread.
 			this->ros_queue_thread =
-				std::thread(std::bind(&TigrilloPlugin::QueueThread, this));
+				std::thread(std::bind(&Tigrillo2Plugin::QueueThread, this));
 
 			// Publish the sensors on ROS in a thread loop
 			this->ros_send_thread =
-				std::thread(std::bind(&TigrilloPlugin::SendRosMsgThread, this));
+				std::thread(std::bind(&Tigrillo2Plugin::SendRosMsgThread, this));
 		}
 		
 
@@ -338,6 +334,6 @@ namespace gazebo
 	};
 
 	// Tell Gazebo about this plugin, so that Gazebo can call Load on this plugin.
-	GZ_REGISTER_MODEL_PLUGIN(TigrilloPlugin);
+	GZ_REGISTER_MODEL_PLUGIN(Tigrillo2Plugin);
 }
 #endif
