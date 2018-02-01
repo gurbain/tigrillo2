@@ -17,7 +17,11 @@ data/analysis/*
 *.jpeg
 *.pkl
 *.npy
-*cpg.png
+*.png
+!src/tigrillo_plot/plotter_gui
+!src/tigrillo_plot/plotter_gui/*
+!src/tigrillo_plot/plotter_gui/*/*
+!src/tigrillo_plot/plotter_gui/*/*/*
 
 # Other built files
 *build*
