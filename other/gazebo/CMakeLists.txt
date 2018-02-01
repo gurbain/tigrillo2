@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
 
-set(PROJECT_NAME "TigrilloPlugin")
+set(PROJECT_NAME "Tigrillo2Plugin")
 
 find_package(roscpp REQUIRED)
 find_package(std_msgs REQUIRED)
