@@ -38,7 +38,7 @@ class Score(object):
 
         self.start_eval_time = 25
         self.stop_eval_time = 35
-        self.eval_points = 20000
+        self.eval_points = 1500
 
         self.t_new = None
         self.fl_rob_new = None
@@ -122,7 +122,7 @@ class Score(object):
 
     def score_nrmse(self):
         
-        #self.eval_points = 1500
+        self.eval_points = 1500
         self.interpolate()
         # self.plot_sensors()
 
