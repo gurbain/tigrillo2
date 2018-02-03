@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from datetime import datetime
+import numpy as np
 import os
 import pickle
 import sys
@@ -23,7 +24,6 @@ plt.rc('axes', facecolor='white')
 plt.rc('figure', autolayout=True)
 plt.rc('xtick', color='white')
 plt.rc('ytick', color='white')
-
 
 RESULT_FOLDER = '/home/gabs48/src/quadruped/tigrillo2/data/analysis/results'
 
@@ -55,22 +55,64 @@ class VizWin(QtWidgets.QGridLayout):
 
     def plotFigure(self, name):
 
-        if name in ["fl", "fr", "br", "bl"]:
+        if name in ["Plot FL", "Plot FR", "Plot BR", "Plot BL"]:
             self.plotSensor(name)
+        if name  == "CMA Evolution":
+            self.plotEvolution()
 
     def plotSensor(self, name):
 
         self.clean()
+        data_init = self.win.sel_conf[0]
         data = self.win.sel_conf[self.win.sel_ite]
+        l = name.split()[-1]
 
         self.plot = SimpleFigure()
         self.addWidget(self.plot)
 
         self.plot.axes.cla()
-        self.plot.axes.plot(data["t"], data[name + "_rob"], linewidth=1, label=name.upper() + " Leg Robot")
-        self.plot.axes.plot(data["t"], data[name + "_sim"], linewidth=1, label=name.upper() + " Leg Simulation")
-        self.plot.axes.legend()
+        # Multi lines
+        if len(data_init[l.lower() + "_rob"].shape) > 1:
+            rob_mean = np.mean(data_init[l.lower() + "_rob"], axis=1) - np.mean(np.mean(data_init[l.lower() + "_rob"], axis=1))
+            sim_mean = np.mean(data[l.lower() + "_sim"], axis=1) - np.mean(np.mean(data[l.lower() + "_sim"], axis=1))
+            self.plot.axes.plot(data_init["t"], data_init[l.lower() + "_rob"], linewidth=0.4, color="skyblue")
+            self.plot.axes.plot(data_init["t"], rob_mean, linewidth=2.5, color=self.getStyleColors()[0], label="Averaged Centered " + l + " Rob")
+            self.plot.axes.plot(data_init["t"], data[l.lower() + "_sim"], linewidth=0.8, color="orchid")
+            self.plot.axes.plot(data_init["t"], sim_mean, linewidth=2.5, color=self.getStyleColors()[1], label="Averaged Centered " + l + " Sim")
+            self.plot.axes.set_xlim([data_init["t"][0], data_init["t"][-1]])
+            self.plot.axes.legend()
+
+        else:
+            self.plot.axes.plot(data_init["t"], data_init[l.lower() + "_rob"], linewidth=1, label=l + " Leg Robot")
+            self.plot.axes.plot(data_init["t"], data[l.lower() + "_sim"], linewidth=1, label=l + " Leg Simulation")
+            self.plot.axes.legend()
+
         self.plot.draw()
+
+    def plotEvolution(self):
+
+        self.clean()
+        scores = [t["score"] for t in self.win.sel_conf]
+        pop_size = self.win.sel_conf[0]["pop"]
+        try:
+            x, y_min, y_max, y_av = self.rearrangePop(scores, pop_size)
+        except AssertionError as e:
+            print e
+            return
+
+        self.plot = SimpleFigure()
+        self.addWidget(self.plot)
+
+        self.plot.axes.cla()
+        self.plot.axes.plot(x, y_max, linestyle="-", color=self.getStyleColors()[1], linewidth=1, label="Max")
+        self.plot.axes.plot(x, y_av, linestyle="-", color=self.getStyleColors()[3], linewidth=1, label="Average")
+        self.plot.axes.plot(x, y_min, linestyle="-", color=self.getStyleColors()[0], linewidth=1, label="Min")
+        self.plot.axes.set_title("Training score of CMA-ES algorithm with popSize = " + str(pop_size), fontsize=14)
+        self.plot.axes.set_ylabel('Score')
+        self.plot.axes.set_xlabel('Generation Epoch')
+        self.plot.axes.xaxis.label.set_color('white')
+        self.plot.axes.yaxis.label.set_color('white')
+        self.plot.axes.title.set_color('white')
 
     def showSimParams(self):
 
@@ -84,6 +126,30 @@ class VizWin(QtWidgets.QGridLayout):
 
         for i in reversed(range(self.count())): 
             self.itemAt(i).widget().setParent(None)
+
+    def getStyleColors(self):
+
+        if 'axes.prop_cycle' in plt.rcParams:
+            cols = plt.rcParams['axes.color_cycle']
+        else:
+            cols = ['b', 'r', 'y', 'g', 'k']
+        return cols
+
+    def rearrangePop(self, scores, ps):
+
+        array = np.array(scores)
+        array = array[0:len(scores) -(len(scores) % ps)]
+        # assert len(scores) % ps == 0, "The total number of iteration (" + str(len(scores)) + \
+        #                                ") shall be a multiple of the population size (" + \
+        #                                str(ps) + "). Please verify the file " +  \
+        #                                self.win.sel_exp + " or this sript!"
+
+        matrix = np.reshape(array, (-1, ps))
+        y_min = np.min(matrix, axis=1)
+        y_max = np.max(matrix, axis=1)
+        y_av = np.mean(matrix, axis=1)
+        x = np.array(range((y_av.size))) + 1
+        return x, y_min, y_max, y_av
 
 
 class IteListWin(QtWidgets.QGridLayout):
@@ -128,7 +194,8 @@ class IteListWin(QtWidgets.QGridLayout):
 
     def selectIteration(self, item):
 
-        self.win.sel_ite = item.data(QtCore.Qt.UserRole)
+        if "data" in dir(item):
+            self.win.sel_ite = item.data(QtCore.Qt.UserRole)
 
 
 class ExpListWin(QtWidgets.QGridLayout):
@@ -208,12 +275,24 @@ class ExpButWin(QtWidgets.QGridLayout):
     def eventFilter(self, object, event):
 
         if event.type() == QtCore.QEvent.MouseButtonPress:
-            print("You pressed the button")
-            return True
+            if self.win.sel_conf:
+                if object.text() == "Simulate Best":
+                    print "Simulatioooon"
+                elif object.text() == "Optim Parameters":
+                    print "Show table"
+                else:
+                    self.win.viz_lay.plotFigure(object.text())
+                return True
+            else:
+                self.win.displayStatus("Please select experiment and iteration before using this function", 3000)
 
         elif event.type() == QtCore.QEvent.HoverMove:
-            print(object.text())
-            self.win.displayStatus("Display the the optimization evolution across generations")
+            if object.text() == "Simulate Best":
+                self.win.displayStatus("Replay the simulation of the best individual in the experiment")
+            elif object.text() == "Optim Parameters":
+                self.win.displayStatus("Display the parameters of the optimization process")
+            elif object.text() == "CMA Evolution":
+                self.win.displayStatus("Display the optimization evolution across generations")
             return True
 
         return False
@@ -271,21 +350,19 @@ class IteButWin(QtWidgets.QGridLayout):
     def eventFilter(self, object, event):
 
         if event.type() == QtCore.QEvent.MouseButtonPress:
-            if self.win.sel_conf and self.win.sel_ite:
-                if object.text() == "Plot FL":
-                    self.win.viz_lay.plotFigure("fl")
-                if object.text() == "Plot FR":
-                    self.win.viz_lay.plotFigure("fr")
-                if object.text() == "Plot BL":
-                    self.win.viz_lay.plotFigure("bl")
-                if object.text() == "Plot BR":
-                    self.win.viz_lay.plotFigure("br")
+            if self.win.sel_conf and (self.win.sel_ite is not None):
+                self.win.viz_lay.plotFigure(object.text())
+                return True
             else:
                 self.win.displayStatus("Please select experiment and iteration before using this function", 3000)
-            return True
 
         elif event.type() == QtCore.QEvent.HoverMove:
-            self.win.displayStatus("Display the the optimization evolution across generations")
+            if "Plot" in object.text():
+                self.win.displayStatus("Plot the sensor signals on robot and in simulation")
+            elif object.text() == "Optim Parameters":
+                self.win.displayStatus("Display the parameters of the specific iteration")
+            elif object.text() == "Spectogram":
+                self.win.displayStatus("Plot the Spectogram of the signal difference between robot and simulation")
             return True
 
         return False

@@ -13,6 +13,7 @@ from bisect import bisect
 import cma
 import numpy as np
 from collections import OrderedDict
+import os
 import rosbag
 import rospy as ros
 from scipy.interpolate import interp1d
@@ -36,11 +37,12 @@ class Score(object):
 
     def __init__(self):
 
-        self.start_eval_time = 25
-        self.stop_eval_time = 35
+        self.start_eval_time = 21 # 10
+        self.stop_eval_time = 44 # 47
         self.eval_points = 1500
 
         self.t_new = None
+        self.zeros = None
         self.fl_rob_new = None
         self.fl_sim_new = None
         self.fr_rob_new = None
@@ -49,6 +51,17 @@ class Score(object):
         self.bl_sim_new = None
         self.br_rob_new = None
         self.br_sim_new = None
+        self.fl_act_new = None
+
+        self.f_fl_sim = None
+        self.f_fl_rob = None
+        self.f_fr_sim = None
+        self.f_fr_rob = None
+        self.f_bl_sim = None
+        self.f_bl_rob = None
+        self.f_br_sim = None
+        self.f_br_rob = None
+        self.f_fl_act = None
 
         self.freq_fl_s = None
         self.t_fl_s = None
@@ -66,6 +79,7 @@ class Score(object):
     def cleanup(self):
 
         self.t_new = None
+        self.zeros = None
         self.fl_rob_new = None
         self.fl_sim_new = None
         self.fr_rob_new = None
@@ -74,6 +88,16 @@ class Score(object):
         self.bl_sim_new = None
         self.br_rob_new = None
         self.br_sim_new = None
+        self.fl_act_new = None
+        self.f_fl_sim = None
+        self.f_fl_rob = None
+        self.f_fr_sim = None
+        self.f_fr_rob = None
+        self.f_bl_sim = None
+        self.f_bl_rob = None
+        self.f_br_sim = None
+        self.f_br_rob = None
+        self.f_fl_act = None
         self.freq_fl_s = None
         self.t_fl_s = None
         self.s_fl = None
@@ -93,6 +117,53 @@ class Score(object):
             return self.score_nrmse()
         elif self.score_method  == "spectrogram":
             return self.score_specto()
+        elif self.score_method  == "av_period":
+            return self.score_av_period()
+
+    def score_av_period(self):
+
+        self.interpolate()
+        self.zeros = utils.zero_crossing(self.fl_act_new, self.t_new)
+        #self.plot_av_period_before()
+        c = len(self.zeros)
+        r = int(len(self.t_new)/c)
+
+        self.fl_rob_new = np.zeros([r, (c-1)])
+        self.fl_sim_new = np.zeros([r, (c-1)])
+        self.fr_rob_new = np.zeros([r, (c-1)])
+        self.fr_sim_new = np.zeros([r, (c-1)])
+        self.bl_rob_new = np.zeros([r, (c-1)])
+        self.bl_sim_new = np.zeros([r, (c-1)])
+        self.br_rob_new = np.zeros([r, (c-1)])
+        self.br_sim_new = np.zeros([r, (c-1)])
+        self.t_new = self.t_new[0:r]
+
+        for i in range(c-1):
+            x_new = np.linspace(self.zeros[i], self.zeros[i+1], r)
+            self.fl_rob_new[:, i] = self.f_fl_rob(x_new)
+            self.fl_sim_new[:, i] = self.f_fl_sim(x_new)
+            self.fr_rob_new[:, i] = self.f_fr_rob(x_new)
+            self.fr_sim_new[:, i] = self.f_fr_sim(x_new)
+            self.bl_rob_new[:, i] = self.f_bl_rob(x_new)
+            self.bl_sim_new[:, i] = self.f_bl_sim(x_new)
+            self.br_rob_new[:, i] = self.f_br_rob(x_new)
+            self.br_sim_new[:, i] = self.f_br_sim(x_new)
+
+        # Average all periods and remove bias to center around 0
+        fl_rob_mean = np.mean(self.fl_rob_new, axis=1) - np.mean(np.mean(self.fl_rob_new, axis=1))
+        fr_rob_mean = np.mean(self.fr_rob_new, axis=1) - np.mean(np.mean(self.fr_rob_new, axis=1))
+        bl_rob_mean = np.mean(self.bl_rob_new, axis=1) - np.mean(np.mean(self.bl_rob_new, axis=1))
+        br_rob_mean = np.mean(self.br_rob_new, axis=1) - np.mean(np.mean(self.br_rob_new, axis=1))
+        fl_sim_mean = np.mean(self.fl_sim_new, axis=1) - np.mean(np.mean(self.fl_sim_new, axis=1)) 
+        fr_sim_mean = np.mean(self.fr_sim_new, axis=1) - np.mean(np.mean(self.fr_sim_new, axis=1))
+        bl_sim_mean = np.mean(self.bl_sim_new, axis=1) - np.mean(np.mean(self.bl_sim_new, axis=1))
+        br_sim_mean = np.mean(self.br_sim_new, axis=1) - np.mean(np.mean(self.br_sim_new, axis=1))
+
+        #self.plot_av_period_after()
+        rob_new = np.vstack((fl_rob_mean, fr_rob_mean, bl_rob_mean, br_rob_mean))
+        sim_new = np.vstack((fl_sim_mean, fr_sim_mean, bl_sim_mean, br_sim_mean))
+        score = utils.nrmse(rob_new, sim_new)
+        return score
 
     def score_specto(self):
 
@@ -136,10 +207,12 @@ class Score(object):
         # Remove items taken at the same timestep
         sens_sim = utils.filter_duplicate(self.sens_sim_sig)
         sens_rob = utils.filter_duplicate(self.sens_rob_sig)
+        act = utils.filter_duplicate(self.act_sig)
 
         # Get all data in a numpy array and interpolate functions
         t_sim = np.array([d["time"]for d in sens_sim])
         t_rob = np.array([d["time"]for d in sens_rob])
+        t_act = np.array([d["time"]for d in act])
         fl_sim = np.array([d["FL"]for d in sens_sim])
         fl_rob = np.array([d["FL"]for d in sens_rob])
         fr_sim = np.array([d["FR"]for d in sens_sim])
@@ -148,25 +221,28 @@ class Score(object):
         bl_rob = np.array([d["BL"]for d in sens_rob])
         br_sim = np.array([d["BR"]for d in sens_sim])
         br_rob = np.array([d["BR"]for d in sens_rob])
-        f_fl_sim = interp1d(t_sim, fl_sim, kind='cubic', assume_sorted=False)
-        f_fl_rob  = interp1d(t_rob, fl_rob, kind='cubic', assume_sorted=False)
-        f_fr_sim = interp1d(t_sim, fr_sim, kind='cubic', assume_sorted=False)
-        f_fr_rob  = interp1d(t_rob, fr_rob, kind='cubic', assume_sorted=False)
-        f_bl_sim = interp1d(t_sim, bl_sim, kind='cubic', assume_sorted=False)
-        f_bl_rob  = interp1d(t_rob, bl_rob, kind='cubic', assume_sorted=False)
-        f_br_sim = interp1d(t_sim, br_sim, kind='cubic', assume_sorted=False)
-        f_br_rob  = interp1d(t_rob, br_rob, kind='cubic', assume_sorted=False)
+        fl_act = np.array([d["FL"]for d in act])
+        self.f_fl_act = interp1d(t_act, fl_act, kind='cubic', assume_sorted=False)
+        self.f_fl_sim = interp1d(t_sim, fl_sim, kind='cubic', assume_sorted=False)
+        self.f_fl_rob = interp1d(t_rob, fl_rob, kind='cubic', assume_sorted=False)
+        self.f_fr_sim = interp1d(t_sim, fr_sim, kind='cubic', assume_sorted=False)
+        self.f_fr_rob = interp1d(t_rob, fr_rob, kind='cubic', assume_sorted=False)
+        self.f_bl_sim = interp1d(t_sim, bl_sim, kind='cubic', assume_sorted=False)
+        self.f_bl_rob = interp1d(t_rob, bl_rob, kind='cubic', assume_sorted=False)
+        self.f_br_sim = interp1d(t_sim, br_sim, kind='cubic', assume_sorted=False)
+        self.f_br_rob = interp1d(t_rob, br_rob, kind='cubic', assume_sorted=False)
 
         # Create new time axis and interpolate
         self.t_new = np.linspace(self.start_eval_time, self.stop_eval_time, self.eval_points)
-        self.fl_rob_new = f_fl_rob(self.t_new)
-        self.fl_sim_new = f_fl_sim(self.t_new)
-        self.fr_rob_new = f_fr_rob(self.t_new)
-        self.fr_sim_new = f_fr_sim(self.t_new)
-        self.bl_rob_new = f_bl_rob(self.t_new)
-        self.bl_sim_new = f_bl_sim(self.t_new)
-        self.br_rob_new = f_br_rob(self.t_new)
-        self.br_sim_new = f_br_sim(self.t_new)
+        self.fl_rob_new = self.f_fl_rob(self.t_new)
+        self.fl_sim_new = self.f_fl_sim(self.t_new)
+        self.fr_rob_new = self.f_fr_rob(self.t_new)
+        self.fr_sim_new = self.f_fr_sim(self.t_new)
+        self.bl_rob_new = self.f_bl_rob(self.t_new)
+        self.bl_sim_new = self.f_bl_sim(self.t_new)
+        self.br_rob_new = self.f_br_rob(self.t_new)
+        self.br_sim_new = self.f_br_sim(self.t_new)
+        self.fl_act_new = self.f_fl_act(self.t_new)
 
     def plot_sensors(self):
 
@@ -210,6 +286,51 @@ class Score(object):
         plt.savefig(self.save_folder + "specto_diff_br_" + str(self.it) + ".png", format='png', dpi=300)
         plt.close()
     
+    def plot_av_period_before(self):
+
+        act_new = self.fl_act_new * 127.68310365946067
+        act_new += 82.5
+
+        mi = min(act_new)
+        ma = max(act_new)
+        plt.plot(self.t_new, act_new, linewidth=1, label="FL Act")
+        plt.plot(self.t_new, self.fl_rob_new, linewidth=1, label="FL Rob")
+        for t in self.zeros:
+             plt.plot([t, t], [mi, ma], linewidth=1)
+        plt.savefig(self.save_folder + "period_before_" + str(self.it) + ".png", format='png', dpi=300)
+        plt.close()
+
+    def plot_av_period_after(self):
+
+        plt.plot(self.t_new, self.fl_rob_new, linewidth=0.4, color="skyblue", label="Superposed FL Rob")
+        plt.plot(self.t_new, np.mean(self.fl_rob_new, axis=1), linewidth=2, color="b", label="Averaged FL Rob")
+        plt.plot(self.t_new, self.fl_sim_new, linewidth=0.4, color="orchid", label="Superposed FL Sim")
+        plt.plot(self.t_new, np.mean(self.fl_sim_new, axis=1), linewidth=2, color="r", label="Averaged FL Sim")
+        plt.xlim([self.t_new[0], self.t_new[-1]])
+        plt.savefig(self.save_folder + "period_after_FL_" + str(self.it) + ".png", format='png', dpi=300)
+        plt.close()
+        plt.plot(self.t_new, self.fr_rob_new, linewidth=0.4, color="skyblue", label="Superposed FR Rob")
+        plt.plot(self.t_new, np.mean(self.fr_rob_new, axis=1), linewidth=2, color="b", label="Averaged FR Rob")
+        plt.plot(self.t_new, self.fr_sim_new, linewidth=0.4, color="orchid", label="Superposed FR Sim")
+        plt.plot(self.t_new, np.mean(self.fr_sim_new, axis=1), linewidth=2, color="r", label="Averaged FR Sim")
+        plt.xlim([self.t_new[0], self.t_new[-1]])
+        plt.savefig(self.save_folder + "period_after_FR_" + str(self.it) + ".png", format='png', dpi=300)
+        plt.close()
+        plt.plot(self.t_new, self.bl_rob_new, linewidth=0.4, color="skyblue", label="Superposed BL Rob")
+        plt.plot(self.t_new, np.mean(self.bl_rob_new, axis=1), linewidth=2, color="b", label="Averaged BL Rob")
+        plt.plot(self.t_new, self.bl_sim_new, linewidth=0.4, color="orchid", label="Superposed BL Sim")
+        plt.plot(self.t_new, np.mean(self.bl_sim_new, axis=1), linewidth=2, color="r", label="Averaged BL Sim")
+        plt.xlim([self.t_new[0], self.t_new[-1]])
+        plt.savefig(self.save_folder + "period_after_BL_" + str(self.it) + ".png", format='png', dpi=300)
+        plt.close()
+        plt.plot(self.t_new, self.br_rob_new, linewidth=0.4, color="skyblue", label="Superposed BR Rob")
+        plt.plot(self.t_new, np.mean(self.br_rob_new, axis=1), linewidth=2, color="b", label="Averaged BR Rob")
+        plt.plot(self.t_new, self.br_sim_new, linewidth=0.4, color="orchid", label="Superposed BR Sim")
+        plt.plot(self.t_new, np.mean(self.br_sim_new, axis=1), linewidth=2, color="r", label="Averaged BR Sim")
+        plt.xlim([self.t_new[0], self.t_new[-1]])
+        plt.savefig(self.save_folder + "period_after_BR_" + str(self.it) + ".png", format='png', dpi=300)
+        plt.close()
+
 
 class Optimization(Score):
 
@@ -230,20 +351,23 @@ class Optimization(Score):
         self.norm_params = []
 
         # Optimization metaparameter
-        self.params = [0.5, 0.8, 0.8, 0.5, 0.8, 0.8, 0.5, 0.1, 0.1, 0.1, 0.1]
+        self.params = [0.5, 0.8, 0.8, 0.5, 0.8, 0.8, 0.5, 0.1, 0.1, 0.1, 0.1, 0.5]#, 0.5]
         self.sim_time = 0
-        self.start_time = 20
-        self.stop_time = 40
+        self.start_time = 20 # 5
+        self.stop_time = 45 # 50
         self.pool_number = 1
-        self.max_iter = 300
+        self.max_iter = 1200
         self.init_var = 0.2
         self.min = 0
         self.max = 1
-        self.score_method = "nrmse"
+        self.pop_size = 0
+        self.score_method = "av_period"
 
         self.it = 0
         self.pool = 0
         self.score = 0
+        self.t_init = None
+        self.t_it_stop = None
 
         super(Optimization, self).__init__()
 
@@ -312,6 +436,10 @@ class Optimization(Score):
         self.max_damping = 0.5
         self.min_spring = 0.01
         self.max_spring = 50
+        self.min_mul = 0.5
+        self.max_mul = 1.5
+        #self.min_offset = - math.pi/6
+        #self.max_offset = math.pi/6
 
         p[0] = (self.min_perc_mass + np[0] * (self.max_perc_mass - self.min_perc_mass)) * self.total_mass
         p[1] = self.min_mu + np[1] * (self.max_mu - self.min_mu)
@@ -324,6 +452,8 @@ class Optimization(Score):
         p[8] = self.min_spring + np[8] * (self.max_spring - self.min_spring)
         p[9] = self.min_damping + np[9] * (self.max_damping - self.min_damping)
         p[10] = self.min_spring + np[10] * (self.max_spring - self.min_spring)
+        p[11] = self.min_mul + np[10] * (self.max_mul - self.min_mul)
+        #p[12] = self.min_offset + np[10] * (self.max_offset - self.min_offset)
         self.params = p
 
     def model(self):
@@ -378,9 +508,8 @@ class Optimization(Score):
         br2 = self.act_sig[ind]["BR"]
         br = br1 + ((br2- br1) * (t - t1) / (t2 - t1))
 
-        #print(fl1, fl, fl2)
-        #print(t1, t, t2)
-        return [fl, fr, bl, br]
+        return [self.params[11] * fl, self.params[11] * fr, \
+                self.params[11] * bl, self.params[11] * br] # + self.params[12]
 
     def sim(self):
 
@@ -413,7 +542,7 @@ class Optimization(Score):
             time.sleep(0.005)
 
         p.stop()
-        return
+        return 0
 
     def cleanup(self):
 
@@ -426,7 +555,7 @@ class Optimization(Score):
     def pool_eval(self, parameters):
 
         # Init
-        t_init = time.time()
+        t_it_init = time.time()
         sys.stdout.write("Iteration " + str(self.it+1) + ":\t")
 
         # Create the new Tigrillo model
@@ -435,13 +564,14 @@ class Optimization(Score):
 
         # Perform simulation
         self.sim()
+        self.t_it_stop = time.time()
         self.pool += 1
 
         # Compare similarity and save
         score = self.get_score()
         sys.stdout.write("Score = {0:.4f}".format(score))
         sys.stdout.write("\t\t(st: " + str(self.stop_time - self.start_time) + \
-                         "s, rt: {0:.2f}s)\n".format(time.time() - t_init))
+                         "s, rt: {0:.2f}s)\n".format(self.t_it_stop - t_it_init))
 
         return score
 
@@ -469,18 +599,32 @@ class Optimization(Score):
 
     def save(self):
 
-        to_save = {"iter": self.it, "score": self.score, "sim_time": self.sim_time, \
-                   "sim_time": self.sim_time, "start_time": self.start_time, \
-                   "stop_time": self.stop_time, "pool_number": self.pool_number, \
-                   "min": self.min,  "max": self.max,  "score_method": self.score_method, \
-                   "params": self.params, "config": self.conf, "eval_points": self.eval_points, \
-                   "start_eval_time": self.start_eval_time, "stop_eval_points": self.stop_eval_time, \
-                   "max_iter": self.max_iter, "init_var": self.init_var, "t": self.t_new, \
-                   "fl_rob": self.fl_rob_new, "fl_sim": self.fl_sim_new, \
-                   "fr_rob": self.fr_rob_new, "fr_sim": self.fr_sim_new, \
-                   "bl_rob": self.bl_rob_new, "bl_sim": self.bl_sim_new, \
-                   "br_rob": self.br_rob_new, "br_sim": self.br_sim_new, \
-                   "bag_file": self.bag_file, "sim_file": self.sim_file}
+        to_save = {"iter": self.it, "score": self.score, "params": self.params, \
+                   "config": self.conf, "elapsed time": self.t_it_stop - self.t_init, \
+                   "fl_sim": self.fl_sim_new, "fr_sim": self.fr_sim_new, \
+                   "bl_sim": self.bl_sim_new, "br_sim": self.br_sim_new}
+        if self.it == 0:
+            to_save["file_script"] = open(os.path.basename(__file__), 'r').read()
+            to_save["sim_file"] = self.sim_file
+            to_save["bag_file"] = self.bag_file,
+            to_save["sim_time"] = self.sim_time
+            to_save["start_time"] = self.start_time
+            to_save["stop_time"] = self.stop_time
+            to_save["pop"] = self.pop_size
+            to_save["pool_number"] = self.pool_number
+            to_save["min"] = self.min
+            to_save["max"] = self.max
+            to_save["eval_points"] = self.eval_points
+            to_save["start_eval_time"] = self.start_eval_time
+            to_save["stop_eval_points"] = self.stop_eval_time
+            to_save["max_iter"] = self.max_iter
+            to_save["init_var"] = self.init_var
+            to_save["score_method"] = self.score_method
+            to_save["fl_rob"] = self.fl_rob_new
+            to_save["fr_rob"] = self.fr_rob_new
+            to_save["bl_rob"] = self.bl_rob_new
+            to_save["br_rob"] = self.br_rob_new
+            to_save["t"] = self.t_new
 
         utils.save_on_top(to_save, self.cma_data_filename)
 
@@ -495,12 +639,12 @@ class Optimization(Score):
         es = cma.CMAEvolutionStrategy(self.params, self.init_var,
                                       {'boundary_handling': 'BoundTransform ', 'bounds': [self.min, self.max],
                                        'maxfevals': self.max_iter, 'verbose': -9})
-        pop_size = es.popsize
-        t_init = time.time()
+        self.pop_size = es.popsize
+        self.t_init = time.time()
 
         # Run optimization
         print("== Start Optimization process with dim of " + str(len(self.params)) + \
-              " and population size of " + str(pop_size) + " ==\n")
+              " and population size of " + str(self.pop_size) + " ==\n")
         while not es.stop():
             solutions = es.ask()
             es.tell(solutions, [self.eval(l) for l in solutions])
@@ -508,7 +652,7 @@ class Optimization(Score):
         res = es.result()
 
         # Return optimum
-        opt_time = t_stop - t_init
+        opt_time = t_stop - self.t_init
         opt_param = res[0]
         opt_score = res[1]
         print("== Finish Optimization process with opt score = {0:.3f} and params = ".format(opt_score) + \
