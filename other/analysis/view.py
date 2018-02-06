@@ -1,9 +1,12 @@
 #!/usr/bin/env python
 
-from datetime import datetime
+import datetime
 import numpy as np
 import os
+import pause
 import pickle
+import rospy as ros
+from scipy.interpolate import interp1d
 import sys
 import time
 
@@ -16,10 +19,12 @@ import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
-#import physics
+import physics
+import utils
+import model
 
 plt.style.use('fivethirtyeight')
-plt.rc('font', family='sansserif')
+plt.rc('font', family='Bitstream Vera Sans')
 plt.rc('axes', facecolor='white')
 plt.rc('figure', autolayout=True)
 plt.rc('xtick', color='white')
@@ -28,15 +33,106 @@ plt.rc('ytick', color='white')
 RESULT_FOLDER = '/home/gabs48/src/quadruped/tigrillo2/data/analysis/results'
 
 
+class SimpleSimulation(object):
+
+    def __init__(self, win, sim_id=0, time_step=0.02):
+
+        self.physics = physics.Gazebo("tigrillo_rt.world")
+        self.sim_id = sim_id
+        self.win = win
+        self.time_step = time_step
+
+        ros.init_node('view', anonymous=True)
+        ros.on_shutdown(utils.cleanup)
+
+        # Simulation data retrieved from file
+        data = self.win.sel_conf[sim_id]
+        data_init = self.win.sel_conf[0]
+        self.f_fl = interp1d(data_init["t_act"] , data_init["fl_act"], assume_sorted=False, fill_value="extrapolate")
+        self.f_fr = interp1d(data_init["t_act"] , data_init["fr_act"], assume_sorted=False, fill_value="extrapolate")
+        self.f_bl = interp1d(data_init["t_act"] , data_init["bl_act"], assume_sorted=False, fill_value="extrapolate")
+        self.f_br = interp1d(data_init["t_act"] , data_init["br_act"], assume_sorted=False, fill_value="extrapolate")
+        self.params_unormed = utils.unorm(data["params"], data_init["params_min"], data_init["params_max"])
+        self.config = data_init["config"]
+        self.file = data_init["model_file"]
+        self.time_bias = data_init["start_time"]
+        self.sim_time = data_init["stop_time"] - data_init["start_time"]
+
+    def simulate(self):
+
+        # Create the model
+        fg = model.SDFileGenerator(self.config, self.file, model_scale=1, gazebo=True)
+        fg.generate()
+
+        # Create the simulator
+        self.physics.start()
+        while not self.physics.is_sim_started():
+            time.sleep(0.001)
+
+        # Perform simulation loop
+        rt_init = datetime.datetime.now()
+        st = 0
+        i = 0
+        while st < self.sim_time:
+
+            # Actuate
+            st = self.physics.get_gazebo_time()
+            rt = rt_init + datetime.timedelta(seconds=((i+1) * self.time_step))
+            self.physics.actuate(self.getActuator(st + self.time_bias))
+
+            # Pause
+            pause.until(rt)
+            i += 1
+        
+        # Stop the simulator
+        self.physics.stop()
+        return 0
+
+    def getActuator(self, st):
+
+        fl = self.f_fl(st) * self.params_unormed[11] + self.params_unormed[12]
+        fr = self.f_fr(st) * self.params_unormed[11] + self.params_unormed[12]
+        bl = self.f_bl(st) * self.params_unormed[11] + self.params_unormed[13]
+        br = self.f_br(st) * self.params_unormed[11] + self.params_unormed[13]
+
+        return [fl, fr, bl, br]
+
+
+class SimpleTable(QtWidgets.QTableWidget):
+
+    def __init__(self, data, *args):
+
+        QtWidgets.QTableWidget.__init__(self, *args)
+        self.data = data
+        self.fillData()
+        self.resizeColumnsToContents()
+        self.resizeRowsToContents()
+
+    def fillData(self):
+
+        headers = ['Parameter', 'Value']
+        i = 0
+        for key in sorted(self.data):
+            name_item = QtWidgets.QTableWidgetItem(key.replace('_', ' ').title())
+            self.setItem(i, 0, name_item)
+            value_item = QtWidgets.QTableWidgetItem(str(self.data[key]))
+            if key == 'iter':
+                value_item = QtWidgets.QTableWidgetItem(str(self.data[key] + 1))
+            self.setItem(i, 1, value_item)
+            i += 1
+
+        self.setHorizontalHeaderLabels(headers)
+
+
 class SimpleFigure(FigureCanvas):
 
-    def __init__(self, parent=None, width=5, height=4, dpi=100):
+    def __init__(self, parent=None, subplot=111, width=5, height=4, dpi=100):
 
-        fig = Figure(figsize=(width, height), dpi=dpi)
-        fig.patch.set_facecolor("None")
-        self.axes = fig.add_subplot(111)
+        self.fig = Figure(figsize=(width, height), dpi=dpi)
+        self.fig.patch.set_facecolor("None")
+        self.axes = self.fig.add_subplot(subplot)
 
-        FigureCanvas.__init__(self, fig)
+        FigureCanvas.__init__(self, self.fig)
 
         self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         self.setStyleSheet("background-color:transparent;")
@@ -59,6 +155,14 @@ class VizWin(QtWidgets.QGridLayout):
             self.plotSensor(name)
         if name  == "CMA Evolution":
             self.plotEvolution()
+        if name  == "Sim Parameters":
+            self.showSimParams()
+        if name  == "Optim Parameters":
+            self.showOptimParams()
+        if name  == "Simulate Best":
+            self.simulate(current=False)
+        if name  == "Simulate":
+            self.simulate(current=True)
 
     def plotSensor(self, name):
 
@@ -67,22 +171,28 @@ class VizWin(QtWidgets.QGridLayout):
         data = self.win.sel_conf[self.win.sel_ite]
         l = name.split()[-1]
 
-        self.plot = SimpleFigure()
-        self.addWidget(self.plot)
 
-        self.plot.axes.cla()
         # Multi lines
         if len(data_init[l.lower() + "_rob"].shape) > 1:
-            rob_mean = np.mean(data_init[l.lower() + "_rob"], axis=1) - np.mean(np.mean(data_init[l.lower() + "_rob"], axis=1))
-            sim_mean = np.mean(data[l.lower() + "_sim"], axis=1) - np.mean(np.mean(data[l.lower() + "_sim"], axis=1))
-            self.plot.axes.plot(data_init["t"], data_init[l.lower() + "_rob"], linewidth=0.4, color="skyblue")
-            self.plot.axes.plot(data_init["t"], rob_mean, linewidth=2.5, color=self.getStyleColors()[0], label="Averaged Centered " + l + " Rob")
-            self.plot.axes.plot(data_init["t"], data[l.lower() + "_sim"], linewidth=0.8, color="orchid")
-            self.plot.axes.plot(data_init["t"], sim_mean, linewidth=2.5, color=self.getStyleColors()[1], label="Averaged Centered " + l + " Sim")
-            self.plot.axes.set_xlim([data_init["t"][0], data_init["t"][-1]])
-            self.plot.axes.legend()
 
+            self.plot = SimpleFigure(subplot=211)
+            self.addWidget(self.plot)
+            self.plot.axes.cla()
+            rob_mean, sim_mean = utils.center_norm_2(np.mean(data_init[l.lower() + "_rob"], axis=1),
+                                                     np.mean(data[l.lower() + "_sim"], axis=1))
+            self.plot.axes.plot(data_init["t"], data_init[l.lower() + "_rob"], linewidth=0.4, color="skyblue")
+            self.plot.axes.plot(data_init["t"], data[l.lower() + "_sim"], linewidth=0.8, color="orchid")
+            self.plot.axes.set_xlim([data_init["t"][0], data_init["t"][-1]])
+
+            self.plot.axes2 = self.plot.fig.add_subplot(212)
+            self.plot.axes2.plot(data_init["t"], rob_mean, linewidth=2.5, color=self.getStyleColors()[0], label="Averaged Centered " + l + " Rob")
+            self.plot.axes2.plot(data_init["t"], sim_mean, linewidth=2.5, color=self.getStyleColors()[1], label="Averaged Centered " + l + " Sim")
+            self.plot.axes2.set_xlim([data_init["t"][0], data_init["t"][-1]])
+            self.plot.axes2.legend(loc='best', fontsize="x-small")
         else:
+            self.plot = SimpleFigure()
+            self.addWidget(self.plot)
+            self.plot.axes.cla()
             self.plot.axes.plot(data_init["t"], data_init[l.lower() + "_rob"], linewidth=1, label=l + " Leg Robot")
             self.plot.axes.plot(data_init["t"], data[l.lower() + "_sim"], linewidth=1, label=l + " Leg Simulation")
             self.plot.axes.legend()
@@ -116,11 +226,50 @@ class VizWin(QtWidgets.QGridLayout):
 
     def showSimParams(self):
 
+        self.clean()
+
+        params_unormed = utils.unorm(self.win.sel_conf[self.win.sel_ite]["params"], 
+                                      self.win.sel_conf[0]["params_min"],
+                                      self.win.sel_conf[0]["params_max"])
+        params_names = self.win.sel_conf[0]["params_names"]
+        params_units = self.win.sel_conf[0]["params_units"]
+        data = {k:self.win.sel_conf[self.win.sel_ite][k] 
+                for k in ('iter', "score", "params", "elapsed time") if k in self.win.sel_conf[self.win.sel_ite]}
+
+        for i, p in enumerate(params_unormed):
+            data[params_names[i]] = "{0:.4f} ".format(p) + str(params_units[i])
+
+        self.table = SimpleTable(data, len(data), 2)
+        self.addWidget(self.table)
+
         return
 
-    def showOptParams(self):
+    def showOptimParams(self):
+
+        self.clean()
+
+        scores = [self.win.sel_conf[i]["score"] for i in range(len(self.win.sel_conf))]
+        data = {k:self.win.sel_conf[0][k] for k in ('bag_file', "sim_file", "sim_time", "start_time", "stop_time",
+                                                    'eval_points', 'start_eval_time', 'stop_eval_time', 'pool_number', 
+                                                    'init_var', 'min', 'max', 'pop', 'max_iter', 'score_method',
+                                                    'params_min', 'params_max', 'params_names', 'params_units')
+                                          if k in self.win.sel_conf[0]}
+        data["best_score"] = min(scores)
+        data["best_iteration"] = scores.index(min(scores)) + 1
+        self.table = SimpleTable(data, len(data), 2)
+        self.addWidget(self.table)
 
         return
+
+    def simulate(self, current=True):
+
+        if current:
+            sim_id = self.win.sel_ite
+        else:
+            scores = [self.win.sel_conf[i]["score"] for i in range(len(self.win.sel_conf))]
+            sim_id = scores.index(min(scores))
+        s = SimpleSimulation(win=self.win, sim_id=sim_id, time_step=0.02)
+        s.simulate()
 
     def clean(self):
 
@@ -130,7 +279,7 @@ class VizWin(QtWidgets.QGridLayout):
     def getStyleColors(self):
 
         if 'axes.prop_cycle' in plt.rcParams:
-            cols = plt.rcParams['axes.color_cycle']
+            cols = [p['color'] for p in plt.rcParams['axes.prop_cycle']]
         else:
             cols = ['b', 'r', 'y', 'g', 'k']
         return cols
@@ -182,20 +331,26 @@ class IteListWin(QtWidgets.QGridLayout):
             self.win.sel_conf = pickle.load(open(self.win.sel_exp + "/cmaes_evolution.pkl", "rb"))
             for i in range(len(self.win.sel_conf)):
                 item = QtWidgets.QListWidgetItem()
-                item.setText("Iteration " + str(i))
+                item.setText("Iteration " + str(i+1))
                 item.setData(QtCore.Qt.UserRole, i)
                 self.list.addItem(item)
+
+            self.win.sel_ite = 0
 
         else:
             item = QtWidgets.QListWidgetItem()
             item.setText("Experiment produced no data")
             item.setData(QtCore.Qt.UserRole, None)
             self.list.addItem(item)
+            self.win.sel_ite = None
+            self.sel_conf = None
 
     def selectIteration(self, item):
 
         if "data" in dir(item):
             self.win.sel_ite = item.data(QtCore.Qt.UserRole)
+        if self.win.last_action != None:
+            self.win.exp_butt_lay.dispatchAction(self.win.last_action)
 
 
 class ExpListWin(QtWidgets.QGridLayout):
@@ -227,7 +382,7 @@ class ExpListWin(QtWidgets.QGridLayout):
 
             dirnames.sort(reverse=True)
             for subdirname in dirnames:
-                date = datetime.strptime(subdirname, '%Y%m%d-%H%M%S')
+                date = datetime.datetime.strptime(subdirname, '%Y%m%d-%H%M%S')
                 item = QtWidgets.QListWidgetItem()
                 item.setText(date.strftime("Exp %d/%m/%Y - %H:%M:%S"))
                 item.setData(QtCore.Qt.UserRole, dirname + "/" + subdirname)
@@ -275,27 +430,31 @@ class ExpButWin(QtWidgets.QGridLayout):
     def eventFilter(self, object, event):
 
         if event.type() == QtCore.QEvent.MouseButtonPress:
-            if self.win.sel_conf:
-                if object.text() == "Simulate Best":
-                    print "Simulatioooon"
-                elif object.text() == "Optim Parameters":
-                    print "Show table"
-                else:
-                    self.win.viz_lay.plotFigure(object.text())
-                return True
-            else:
-                self.win.displayStatus("Please select experiment and iteration before using this function", 3000)
+            return self.dispatchAction(object.text())
 
         elif event.type() == QtCore.QEvent.HoverMove:
-            if object.text() == "Simulate Best":
-                self.win.displayStatus("Replay the simulation of the best individual in the experiment")
-            elif object.text() == "Optim Parameters":
-                self.win.displayStatus("Display the parameters of the optimization process")
-            elif object.text() == "CMA Evolution":
-                self.win.displayStatus("Display the optimization evolution across generations")
-            return True
+            return self.displayHelp(object.text())
 
         return False
+
+    def dispatchAction(self, action):
+
+        if self.win.sel_conf:
+            self.win.viz_lay.plotFigure(action)
+            self.win.last_action = action
+            return True
+        else:
+            self.win.displayStatus("Please select experiment and iteration before using this function", 3000)
+
+    def displayHelp(self, action):
+
+            if action == "Simulate Best":
+                self.win.displayStatus("Replay the simulation of the best individual in the experiment")
+            elif action == "Optim Parameters":
+                self.win.displayStatus("Display the parameters of the optimization process")
+            elif action == "CMA Evolution":
+                self.win.displayStatus("Display the optimization evolution across generations")
+            return True
 
 
 class IteButWin(QtWidgets.QGridLayout):
@@ -350,22 +509,32 @@ class IteButWin(QtWidgets.QGridLayout):
     def eventFilter(self, object, event):
 
         if event.type() == QtCore.QEvent.MouseButtonPress:
-            if self.win.sel_conf and (self.win.sel_ite is not None):
-                self.win.viz_lay.plotFigure(object.text())
-                return True
-            else:
-                self.win.displayStatus("Please select experiment and iteration before using this function", 3000)
+            return self.dispatchAction(object.text())
 
         elif event.type() == QtCore.QEvent.HoverMove:
-            if "Plot" in object.text():
-                self.win.displayStatus("Plot the sensor signals on robot and in simulation")
-            elif object.text() == "Optim Parameters":
-                self.win.displayStatus("Display the parameters of the specific iteration")
-            elif object.text() == "Spectogram":
-                self.win.displayStatus("Plot the Spectogram of the signal difference between robot and simulation")
-            return True
+            return self.displayHelp(object.text())
 
         return False
+
+    def dispatchAction(self, action):
+
+        if self.win.sel_conf and (self.win.sel_ite is not None):
+            self.win.viz_lay.plotFigure(action)
+            self.win.last_action = action
+            return True
+        else:
+            self.win.viz_lay.clean()
+            self.win.displayStatus("Please select experiment and iteration before using this function", 3000)
+
+    def displayHelp(self, action):
+
+        if "Plot" in action:
+            self.win.displayStatus("Plot the sensor signals on robot and in simulation")
+        elif action == "Optim Parameters":
+            self.win.displayStatus("Display the parameters of the specific iteration")
+        elif action == "Spectogram":
+            self.win.displayStatus("Plot the Spectogram of the signal difference between robot and simulation")
+        return True
 
 
 class AppWin(QtWidgets.QMainWindow):
@@ -379,6 +548,7 @@ class AppWin(QtWidgets.QMainWindow):
         self.sel_exp = None
         self.sel_ite = None
         self.sel_conf = None
+        self.last_action = None
 
         self.initUI()
 
@@ -476,6 +646,7 @@ class AppWin(QtWidgets.QMainWindow):
 
     def closeEvent(self, ce):
 
+        utils.cleanup()
         self.quitUI()
 
     def displayStatus(self, msg, t=1000):

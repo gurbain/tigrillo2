@@ -27,7 +27,7 @@ __date__ = "January 26th, 2018"
 
 class Gazebo(threading.Thread):
 
-    def __init__(self, model="tigrillo.world"):
+    def __init__(self, model="tigrillo.world", view=False):
 
         threading.Thread.__init__(self)
 

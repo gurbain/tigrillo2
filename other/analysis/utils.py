@@ -75,6 +75,18 @@ def nrmse(arr1, arr2):
     return (rmse / (max_val - min_val))
 
 
+def unorm(normed_val, minimums, maximums):
+
+    assert len(normed_val) == len(minimums), "The value array should be the same size as the extremums"
+    assert len(normed_val) == len(maximums), "The value array should be the same size as the extremums"
+
+    val = []
+    for i, v in enumerate(normed_val):
+        val.append(minimums[i] + v * (maximums[i] - minimums[i]))
+
+    return val
+
+
 def save_on_top(newdata, filename):
     """ Append data to a file that is already saved """
 
@@ -93,6 +105,15 @@ def center_norm(sig):
     sig_min = np.min(sig)
     sig = (sig - sig_min) / (sig_max - sig_min)
     return sig - 0.5
+
+
+def center_norm_2(sig_drive, sig_follow):
+
+    sig_max = np.max(sig_drive)
+    sig_min = np.min(sig_drive)
+    sig_drive = (sig_drive - sig_min) / (sig_max - sig_min)
+    sig_follow = (sig_follow - sig_min) / (sig_max - sig_min)
+    return [sig_drive - 0.5, sig_follow - 0.5]
 
 
 def freq(sig, fs):

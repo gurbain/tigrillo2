@@ -9,7 +9,6 @@ plt.rc('axes', facecolor='white')
 plt.rc('savefig', facecolor='white')
 plt.rc('figure', autolayout=True)
 
-from bisect import bisect
 import cma
 import numpy as np
 from collections import OrderedDict
@@ -51,7 +50,6 @@ class Score(object):
         self.bl_sim_new = None
         self.br_rob_new = None
         self.br_sim_new = None
-        self.fl_act_new = None
 
         self.f_fl_sim = None
         self.f_fl_rob = None
@@ -61,7 +59,6 @@ class Score(object):
         self.f_bl_rob = None
         self.f_br_sim = None
         self.f_br_rob = None
-        self.f_fl_act = None
 
         self.freq_fl_s = None
         self.t_fl_s = None
@@ -97,7 +94,6 @@ class Score(object):
         self.f_bl_rob = None
         self.f_br_sim = None
         self.f_br_rob = None
-        self.f_fl_act = None
         self.freq_fl_s = None
         self.t_fl_s = None
         self.s_fl = None
@@ -150,18 +146,23 @@ class Score(object):
             self.br_sim_new[:, i] = self.f_br_sim(x_new)
 
         # Average all periods and remove bias to center around 0
-        fl_rob_mean = np.mean(self.fl_rob_new, axis=1) - np.mean(np.mean(self.fl_rob_new, axis=1))
-        fr_rob_mean = np.mean(self.fr_rob_new, axis=1) - np.mean(np.mean(self.fr_rob_new, axis=1))
-        bl_rob_mean = np.mean(self.bl_rob_new, axis=1) - np.mean(np.mean(self.bl_rob_new, axis=1))
-        br_rob_mean = np.mean(self.br_rob_new, axis=1) - np.mean(np.mean(self.br_rob_new, axis=1))
-        fl_sim_mean = np.mean(self.fl_sim_new, axis=1) - np.mean(np.mean(self.fl_sim_new, axis=1)) 
-        fr_sim_mean = np.mean(self.fr_sim_new, axis=1) - np.mean(np.mean(self.fr_sim_new, axis=1))
-        bl_sim_mean = np.mean(self.bl_sim_new, axis=1) - np.mean(np.mean(self.bl_sim_new, axis=1))
-        br_sim_mean = np.mean(self.br_sim_new, axis=1) - np.mean(np.mean(self.br_sim_new, axis=1))
+        fl_rob_mean, fl_sim_mean = utils.center_norm_2(np.mean(self.fl_rob_new, axis=1), np.mean(self.fl_sim_new, axis=1))
+        fr_rob_mean, fr_sim_mean = utils.center_norm_2(np.mean(self.fr_rob_new, axis=1), np.mean(self.fr_sim_new, axis=1))
+        bl_rob_mean, bl_sim_mean = utils.center_norm_2(np.mean(self.bl_rob_new, axis=1), np.mean(self.bl_sim_new, axis=1))
+        br_rob_mean, br_sim_mean = utils.center_norm_2(np.mean(self.br_rob_new, axis=1), np.mean(self.br_sim_new, axis=1))
+        #fr_rob_mean = np.mean(self.fr_rob_new, axis=1) - np.mean(np.mean(self.fr_rob_new, axis=1))
+        #bl_rob_mean = np.mean(self.bl_rob_new, axis=1) - np.mean(np.mean(self.bl_rob_new, axis=1))
+        #br_rob_mean = np.mean(self.br_rob_new, axis=1) - np.mean(np.mean(self.br_rob_new, axis=1))
+        #fl_sim_mean = np.mean(self.fl_sim_new, axis=1) - np.mean(np.mean(self.fl_rob_new, axis=1)) 
+        #fr_sim_mean = np.mean(self.fr_sim_new, axis=1) - np.mean(np.mean(self.fr_rob_new, axis=1))
+        #bl_sim_mean = np.mean(self.bl_sim_new, axis=1) - np.mean(np.mean(self.bl_rob_new, axis=1))
+        #br_sim_mean = np.mean(self.br_sim_new, axis=1) - np.mean(np.mean(self.br_rob_new, axis=1))
 
         #self.plot_av_period_after()
         rob_new = np.vstack((fl_rob_mean, fr_rob_mean, bl_rob_mean, br_rob_mean))
         sim_new = np.vstack((fl_sim_mean, fr_sim_mean, bl_sim_mean, br_sim_mean))
+        #rob_new -= np.mean(np.mean(rob_new, axis=0), axis=1)
+        #sim_new -= np.mean(np.mean(sim_new, axis=0), axis=1)
         score = utils.nrmse(rob_new, sim_new)
         return score
 
@@ -210,19 +211,16 @@ class Score(object):
         act = utils.filter_duplicate(self.act_sig)
 
         # Get all data in a numpy array and interpolate functions
-        t_sim = np.array([d["time"]for d in sens_sim])
-        t_rob = np.array([d["time"]for d in sens_rob])
-        t_act = np.array([d["time"]for d in act])
-        fl_sim = np.array([d["FL"]for d in sens_sim])
-        fl_rob = np.array([d["FL"]for d in sens_rob])
-        fr_sim = np.array([d["FR"]for d in sens_sim])
-        fr_rob = np.array([d["FR"]for d in sens_rob])
-        bl_sim = np.array([d["BL"]for d in sens_sim])
-        bl_rob = np.array([d["BL"]for d in sens_rob])
-        br_sim = np.array([d["BR"]for d in sens_sim])
-        br_rob = np.array([d["BR"]for d in sens_rob])
-        fl_act = np.array([d["FL"]for d in act])
-        self.f_fl_act = interp1d(t_act, fl_act, kind='cubic', assume_sorted=False)
+        t_sim = np.array([d["time"] for d in sens_sim])
+        t_rob = np.array([d["time"] for d in sens_rob])
+        fl_sim = np.array([d["FL"] for d in sens_sim])
+        fl_rob = np.array([d["FL"] for d in sens_rob])
+        fr_sim = np.array([d["FR"] for d in sens_sim])
+        fr_rob = np.array([d["FR"] for d in sens_rob])
+        bl_sim = np.array([d["BL"] for d in sens_sim])
+        bl_rob = np.array([d["BL"] for d in sens_rob])
+        br_sim = np.array([d["BR"] for d in sens_sim])
+        br_rob = np.array([d["BR"] for d in sens_rob])
         self.f_fl_sim = interp1d(t_sim, fl_sim, kind='cubic', assume_sorted=False)
         self.f_fl_rob = interp1d(t_rob, fl_rob, kind='cubic', assume_sorted=False)
         self.f_fr_sim = interp1d(t_sim, fr_sim, kind='cubic', assume_sorted=False)
@@ -351,12 +349,21 @@ class Optimization(Score):
         self.norm_params = []
 
         # Optimization metaparameter
-        self.params = [0.5, 0.8, 0.8, 0.5, 0.8, 0.8, 0.5, 0.1, 0.1, 0.1, 0.1, 0.5]#, 0.5]
+        self.params_names = ["Front Mass", "Back Mass", "Front Friction mu1", "Front Friction mu2", "Front Friction Contact Depth",
+                             "Back Friction mu1", "Back Friction mu2", "Back Friction Contact Depth", "Front Damping",
+                             "Front Stiffness", "Back Damping", "Back Stiffness", "Motor Correction Factor",
+                             "Front Motor Offset", "Back Motor Offset"]
+        self.params_units = ["kg", "kg", " ", " ", "mm", " ", " ", "mm", "N.s/m", "N/m", "N.s/m", "N/m", " ", "Degrees", " ", "Degrees"]
+        self.params_normed = [0.5, 0.5, 0.8, 0.8, 0.5, 0.8, 0.8, 0.5, 0.1, 0.1, 0.1, 0.1, 0.5, 0.5, 0.5]
+        self.params_unormed = []
+        self.params_min = [0.2, 0.2, 0.1, 0.1, 0.01, 0.1, 0.1, 0.01, 0.001, 0.01, 0.001, 0.01, 0.5, -math.pi/6, -math.pi/6]
+        self.params_max = [0.5, 0.5, 20000, 20000, 0.1, 20000, 20000, 0.1, 0.5, 50, 0.5, 50, 1.5, math.pi/6, math.pi/6]
+
         self.sim_time = 0
         self.start_time = 20 # 5
         self.stop_time = 45 # 50
         self.pool_number = 1
-        self.max_iter = 1200
+        self.max_iter = 2000
         self.init_var = 0.2
         self.min = 0
         self.max = 1
@@ -418,98 +425,58 @@ class Optimization(Score):
         utils.mkdir(self.save_folder)
         self.cma_data_filename = self.save_folder + "cmaes_evolution.pkl"
 
+        # Add interpolation function for actuation signal
+        self.t_act = np.array([d["time"] for d in self.act_sig])
+        self.fl_act = np.array([d["FL"] for d in self.act_sig])
+        self.fr_act = np.array([d["FR"] for d in self.act_sig])
+        self.bl_act = np.array([d["BL"] for d in self.act_sig])
+        self.br_act = np.array([d["BR"] for d in self.act_sig])
+        self.f_fl_act = interp1d(self.t_act, self.fl_act, assume_sorted=False, fill_value="extrapolate")
+        self.f_fr_act = interp1d(self.t_act, self.fr_act, assume_sorted=False, fill_value="extrapolate")
+        self.f_bl_act = interp1d(self.t_act, self.bl_act, assume_sorted=False, fill_value="extrapolate")
+        self.f_br_act = interp1d(self.t_act, self.br_act, assume_sorted=False, fill_value="extrapolate")
+
         return
-
-    def unorm(self):
-
-        p = self.params
-        np = self.norm_params
-
-        self.total_mass = 0.5
-        self.min_perc_mass = 0.1
-        self.max_perc_mass = 0.9
-        self.min_mu = 0.1
-        self.max_mu = 20000
-        self.min_cd = 0.01
-        self.max_cd = 0.1
-        self.min_damping = 0.001
-        self.max_damping = 0.5
-        self.min_spring = 0.01
-        self.max_spring = 50
-        self.min_mul = 0.5
-        self.max_mul = 1.5
-        #self.min_offset = - math.pi/6
-        #self.max_offset = math.pi/6
-
-        p[0] = (self.min_perc_mass + np[0] * (self.max_perc_mass - self.min_perc_mass)) * self.total_mass
-        p[1] = self.min_mu + np[1] * (self.max_mu - self.min_mu)
-        p[2] = self.min_mu + np[2] * (self.max_mu - self.min_mu)
-        p[3] = self.min_cd + np[3] * (self.max_cd - self.min_cd)
-        p[4] = self.min_mu + np[4] * (self.max_mu - self.min_mu)
-        p[5] = self.min_mu + np[5] * (self.max_mu - self.min_mu)
-        p[6] = self.min_cd + np[6] * (self.max_cd - self.min_cd)
-        p[7] = self.min_damping + np[7] * (self.max_damping - self.min_damping)
-        p[8] = self.min_spring + np[8] * (self.max_spring - self.min_spring)
-        p[9] = self.min_damping + np[9] * (self.max_damping - self.min_damping)
-        p[10] = self.min_spring + np[10] * (self.max_spring - self.min_spring)
-        p[11] = self.min_mul + np[10] * (self.max_mul - self.min_mul)
-        #p[12] = self.min_offset + np[10] * (self.max_offset - self.min_offset)
-        self.params = p
 
     def model(self):
 
         # Create config
-        self.unorm()
+        self.params_unormed = utils.unorm(self.params_normed, self.params_min, self.params_max)
         self.conf = model.model_config
-        self.conf["body"]["front"]["mass"] = self.params[0]
-        self.conf["body"]["hind"]["mass"] = self.total_mass - self.params[0]
-        self.conf["legs"]["FL"]["foot"]["mu1"] = self.params[1]
-        self.conf["legs"]["FL"]["foot"]["mu2"] = self.params[2]
-        self.conf["legs"]["FL"]["foot"]["contact_depth"] = self.params[3]
-        self.conf["legs"]["FR"]["foot"]["mu1"] = self.params[1]
-        self.conf["legs"]["FR"]["foot"]["mu2"] = self.params[2]
-        self.conf["legs"]["FR"]["foot"]["contact_depth"] = self.params[3]
-        self.conf["legs"]["BL"]["foot"]["mu1"] = self.params[4]
-        self.conf["legs"]["BL"]["foot"]["mu2"] = self.params[5]
-        self.conf["legs"]["BL"]["foot"]["contact_depth"] = self.params[6]
-        self.conf["legs"]["BR"]["foot"]["mu1"] = self.params[4]
-        self.conf["legs"]["BR"]["foot"]["mu2"] = self.params[5]
-        self.conf["legs"]["BR"]["foot"]["contact_depth"] = self.params[6]
-        self.conf["legs"]["FL"]["knee_damping"] = self.params[7]
-        self.conf["legs"]["FL"]["spring_stiffness"] = self.params[8]
-        self.conf["legs"]["FR"]["knee_damping"] = self.params[7]
-        self.conf["legs"]["FR"]["spring_stiffness"] = self.params[8]
-        self.conf["legs"]["BL"]["knee_damping"] = self.params[9]
-        self.conf["legs"]["BL"]["spring_stiffness"] = self.params[10]
-        self.conf["legs"]["BR"]["knee_damping"] = self.params[9]
-        self.conf["legs"]["BR"]["spring_stiffness"] = self.params[10]
+        self.conf["body"]["front"]["mass"] = self.params_unormed[0]
+        self.conf["body"]["hind"]["mass"] = self.params_unormed[1]
+        self.conf["legs"]["FL"]["foot"]["mu1"] = self.params_unormed[2]
+        self.conf["legs"]["FL"]["foot"]["mu2"] = self.params_unormed[3]
+        self.conf["legs"]["FL"]["foot"]["contact_depth"] = self.params_unormed[4]
+        self.conf["legs"]["FR"]["foot"]["mu1"] = self.params_unormed[2]
+        self.conf["legs"]["FR"]["foot"]["mu2"] = self.params_unormed[3]
+        self.conf["legs"]["FR"]["foot"]["contact_depth"] = self.params_unormed[4]
+        self.conf["legs"]["BL"]["foot"]["mu1"] = self.params_unormed[5]
+        self.conf["legs"]["BL"]["foot"]["mu2"] = self.params_unormed[6]
+        self.conf["legs"]["BL"]["foot"]["contact_depth"] = self.params_unormed[7]
+        self.conf["legs"]["BR"]["foot"]["mu1"] = self.params_unormed[5]
+        self.conf["legs"]["BR"]["foot"]["mu2"] = self.params_unormed[6]
+        self.conf["legs"]["BR"]["foot"]["contact_depth"] = self.params_unormed[7]
+        self.conf["legs"]["FL"]["knee_damping"] = self.params_unormed[8]
+        self.conf["legs"]["FL"]["spring_stiffness"] = self.params_unormed[9]
+        self.conf["legs"]["FR"]["knee_damping"] = self.params_unormed[8]
+        self.conf["legs"]["FR"]["spring_stiffness"] = self.params_unormed[9]
+        self.conf["legs"]["BL"]["knee_damping"] = self.params_unormed[10]
+        self.conf["legs"]["BL"]["spring_stiffness"] = self.params_unormed[11]
+        self.conf["legs"]["BR"]["knee_damping"] = self.params_unormed[10]
+        self.conf["legs"]["BR"]["spring_stiffness"] = self.params_unormed[11]
 
         fg = model.SDFileGenerator(self.conf, self.model_file, model_scale=1, gazebo=True)
         fg.generate()
 
     def act(self, t):
 
-        ind = bisect(self.act_t, t)
-        if ind >= len(self.act_t):
-            return [self.act_sig[-1]["FL"], self.act_sig[-1]["FR"], 
-                    self.act_sig[-1]["BL"], self.act_sig[-1]["BR"]]
-        t1 = self.act_sig[ind-1]["time"]
-        t2 = self.act_sig[ind]["time"]
-        fl1 = self.act_sig[ind-1]["FL"]
-        fl2 = self.act_sig[ind]["FL"]
-        fl = fl1 + ((fl2- fl1) * (t - t1) / (t2 - t1))
-        fr1 = self.act_sig[ind-1]["FR"]
-        fr2 = self.act_sig[ind]["FR"]
-        fr = fr1 + ((fr2- fr1) * (t - t1) / (t2 - t1))
-        bl1 = self.act_sig[ind-1]["BL"]
-        bl2 = self.act_sig[ind]["BL"]
-        bl = bl1 + ((bl2- bl1) * (t - t1) / (t2 - t1))
-        br1 = self.act_sig[ind-1]["BR"]
-        br2 = self.act_sig[ind]["BR"]
-        br = br1 + ((br2- br1) * (t - t1) / (t2 - t1))
+        fl = self.f_fl_act(t) * self.params_unormed[11] + self.params_unormed[12]
+        fr = self.f_fr_act(t) * self.params_unormed[11] + self.params_unormed[12]
+        bl = self.f_bl_act(t) * self.params_unormed[11] + self.params_unormed[13]
+        br = self.f_br_act(t) * self.params_unormed[11] + self.params_unormed[13]
 
-        return [self.params[11] * fl, self.params[11] * fr, \
-                self.params[11] * bl, self.params[11] * br] # + self.params[12]
+        return [fl, fr, bl, br]
 
     def sim(self):
 
@@ -559,7 +526,7 @@ class Optimization(Score):
         sys.stdout.write("Iteration " + str(self.it+1) + ":\t")
 
         # Create the new Tigrillo model
-        self.norm_params = parameters
+        self.params_normed = parameters
         self.model()
 
         # Perform simulation
@@ -599,14 +566,15 @@ class Optimization(Score):
 
     def save(self):
 
-        to_save = {"iter": self.it, "score": self.score, "params": self.params, \
+        to_save = {"iter": self.it, "score": self.score, "params": self.params_normed, \
                    "config": self.conf, "elapsed time": self.t_it_stop - self.t_init, \
                    "fl_sim": self.fl_sim_new, "fr_sim": self.fr_sim_new, \
                    "bl_sim": self.bl_sim_new, "br_sim": self.br_sim_new}
         if self.it == 0:
             to_save["file_script"] = open(os.path.basename(__file__), 'r').read()
             to_save["sim_file"] = self.sim_file
-            to_save["bag_file"] = self.bag_file,
+            to_save["bag_file"] = self.bag_file
+            to_save["model_file"] = self.model_file
             to_save["sim_time"] = self.sim_time
             to_save["start_time"] = self.start_time
             to_save["stop_time"] = self.stop_time
@@ -614,9 +582,13 @@ class Optimization(Score):
             to_save["pool_number"] = self.pool_number
             to_save["min"] = self.min
             to_save["max"] = self.max
+            to_save["params_min"] = self.params_min
+            to_save["params_max"] = self.params_max
+            to_save["params_names"] = self.params_names
+            to_save["params_units"] = self.params_units
             to_save["eval_points"] = self.eval_points
             to_save["start_eval_time"] = self.start_eval_time
-            to_save["stop_eval_points"] = self.stop_eval_time
+            to_save["stop_eval_time"] = self.stop_eval_time
             to_save["max_iter"] = self.max_iter
             to_save["init_var"] = self.init_var
             to_save["score_method"] = self.score_method
@@ -625,6 +597,11 @@ class Optimization(Score):
             to_save["bl_rob"] = self.bl_rob_new
             to_save["br_rob"] = self.br_rob_new
             to_save["t"] = self.t_new
+            to_save["fl_act"] = self.fl_act
+            to_save["fr_act"] = self.fr_act
+            to_save["bl_act"] = self.bl_act
+            to_save["br_act"] = self.br_act
+            to_save["t_act"] = self.t_act
 
         utils.save_on_top(to_save, self.cma_data_filename)
 
@@ -636,14 +613,14 @@ class Optimization(Score):
         ros.on_shutdown(utils.cleanup)
     
         # Init algorithm
-        es = cma.CMAEvolutionStrategy(self.params, self.init_var,
+        es = cma.CMAEvolutionStrategy(self.params_normed, self.init_var,
                                       {'boundary_handling': 'BoundTransform ', 'bounds': [self.min, self.max],
                                        'maxfevals': self.max_iter, 'verbose': -9})
         self.pop_size = es.popsize
         self.t_init = time.time()
 
         # Run optimization
-        print("== Start Optimization process with dim of " + str(len(self.params)) + \
+        print("== Start Optimization process with dim of " + str(len(self.params_normed)) + \
               " and population size of " + str(self.pop_size) + " ==\n")
         while not es.stop():
             solutions = es.ask()
