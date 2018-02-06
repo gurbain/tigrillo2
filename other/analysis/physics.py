@@ -39,7 +39,7 @@ class Gazebo(threading.Thread):
             self.sim_ps_list = ["gzserver", "gzclient"]
         else:
             self.sim_node = "gzserver"
-            self.sim_ps_list = "gzserver"
+            self.sim_ps_list = ["gzserver"]
         self.sim_model = model
 
         self.reset_sim_service = '/gazebo/reset_simulation'
