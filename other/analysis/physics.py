@@ -34,8 +34,12 @@ class Gazebo(threading.Thread):
         self.sim_ps = None
         self.sim_ps_name = "rosrun"
         self.sim_package = "gazebo_ros"
-        self.sim_node = "gzserver"
-        self.sim_physics = "gzserver"
+        if view:
+            self.sim_node = "gazebo"
+            self.sim_ps_list = ["gzserver", "gzclient"]
+        else:
+            self.sim_node = "gzserver"
+            self.sim_ps_list = "gzserver"
         self.sim_model = model
 
         self.reset_sim_service = '/gazebo/reset_simulation'
@@ -86,11 +90,11 @@ class Gazebo(threading.Thread):
 
         sys.stdout.write("Stoping gzserver!\t") 
         sys.stdout.flush()
-        tmp = os.popen("ps -Af").read()
-        gzserver_count = tmp.count(self.sim_physics)
-
-        if gzserver_count > 0:
-            os.system("killall -9 " + self.sim_physics)
+        for p in self.sim_ps_list:
+            tmp = os.popen("ps -Af").read()
+            ps_count = tmp.count(p)
+            if ps_count > 0:
+                os.system("killall -9 " + p)
 
     def reset_gazebo(self):
 

@@ -37,7 +37,7 @@ class SimpleSimulation(object):
 
     def __init__(self, win, sim_id=0, time_step=0.02):
 
-        self.physics = physics.Gazebo("tigrillo_rt.world")
+        self.physics = physics.Gazebo("tigrillo_rt.world", view=True)
         self.sim_id = sim_id
         self.win = win
         self.time_step = time_step
@@ -54,7 +54,7 @@ class SimpleSimulation(object):
         self.f_br = interp1d(data_init["t_act"] , data_init["br_act"], assume_sorted=False, fill_value="extrapolate")
         self.params_unormed = utils.unorm(data["params"], data_init["params_min"], data_init["params_max"])
         self.config = data_init["config"]
-        self.file = data_init["model_file"]
+        self.file = "/home/gabs48/.gazebo/models/tigrillo/model.sdf"#data_init["model_file"]
         self.time_bias = data_init["start_time"]
         self.sim_time = data_init["stop_time"] - data_init["start_time"]
 
@@ -90,10 +90,10 @@ class SimpleSimulation(object):
 
     def getActuator(self, st):
 
-        fl = self.f_fl(st) * self.params_unormed[11] + self.params_unormed[12]
-        fr = self.f_fr(st) * self.params_unormed[11] + self.params_unormed[12]
-        bl = self.f_bl(st) * self.params_unormed[11] + self.params_unormed[13]
-        br = self.f_br(st) * self.params_unormed[11] + self.params_unormed[13]
+        fl = self.f_fl(st) * self.params_unormed[12] + self.params_unormed[13]
+        fr = self.f_fr(st) * self.params_unormed[12] + self.params_unormed[13]
+        bl = self.f_bl(st) * self.params_unormed[12] + self.params_unormed[14]
+        br = self.f_br(st) * self.params_unormed[12] + self.params_unormed[14]
 
         return [fl, fr, bl, br]
 
@@ -270,6 +270,7 @@ class VizWin(QtWidgets.QGridLayout):
             sim_id = scores.index(min(scores))
         s = SimpleSimulation(win=self.win, sim_id=sim_id, time_step=0.02)
         s.simulate()
+        del s
 
     def clean(self):
 

@@ -353,18 +353,18 @@ class Optimization(Score):
                              "Back Friction mu1", "Back Friction mu2", "Back Friction Contact Depth", "Front Damping",
                              "Front Stiffness", "Back Damping", "Back Stiffness", "Motor Correction Factor",
                              "Front Motor Offset", "Back Motor Offset"]
-        self.params_units = ["kg", "kg", " ", " ", "mm", " ", " ", "mm", "N.s/m", "N/m", "N.s/m", "N/m", " ", "Degrees", " ", "Degrees"]
-        self.params_normed = [0.5, 0.5, 0.8, 0.8, 0.5, 0.8, 0.8, 0.5, 0.1, 0.1, 0.1, 0.1, 0.5, 0.5, 0.5]
+        self.params_units = ["kg", "kg", " ", " ", "mm", " ", " ", "mm", "N.s/m", "N/m", "N.s/m", "N/m", " ", "Radians", "Radians"]
         self.params_unormed = []
-        self.params_min = [0.2, 0.2, 0.1, 0.1, 0.01, 0.1, 0.1, 0.01, 0.001, 0.01, 0.001, 0.01, 0.5, -math.pi/6, -math.pi/6]
-        self.params_max = [0.5, 0.5, 20000, 20000, 0.1, 20000, 20000, 0.1, 0.5, 50, 0.5, 50, 1.5, math.pi/6, math.pi/6]
+        self.params_normed = [0.5, 0.5, 0.8,   0.8,   0.5,  0.8,   0.8,   0.5,  0.1,   0.1,  0.1,   0.1,  0.5, 0.5,        0.5]
+        self.params_min =    [0.1, 0.1, 0.1,   0.1,   0.01, 0.1,   0.1,   0.01, 0.001, 0.01, 0.001, 0.01, 0.8, -math.pi/8, -math.pi/8]
+        self.params_max =    [0.5, 0.5, 20000, 20000, 0.1,  20000, 20000, 0.1,  0.5,   50,   0.5,   50,   1.2, math.pi/8,  math.pi/8]
 
         self.sim_time = 0
-        self.start_time = 20 # 5
-        self.stop_time = 45 # 50
+        self.start_time = 20
+        self.stop_time = 45
         self.pool_number = 1
-        self.max_iter = 2000
-        self.init_var = 0.2
+        self.max_iter = 5000
+        self.init_var = 0.4
         self.min = 0
         self.max = 1
         self.pop_size = 0
@@ -471,10 +471,10 @@ class Optimization(Score):
 
     def act(self, t):
 
-        fl = self.f_fl_act(t) * self.params_unormed[11] + self.params_unormed[12]
-        fr = self.f_fr_act(t) * self.params_unormed[11] + self.params_unormed[12]
-        bl = self.f_bl_act(t) * self.params_unormed[11] + self.params_unormed[13]
-        br = self.f_br_act(t) * self.params_unormed[11] + self.params_unormed[13]
+        fl = self.f_fl_act(t) * self.params_unormed[12] + self.params_unormed[13]
+        fr = self.f_fr_act(t) * self.params_unormed[12] + self.params_unormed[13]
+        bl = self.f_bl_act(t) * self.params_unormed[12] + self.params_unormed[14]
+        br = self.f_br_act(t) * self.params_unormed[12] + self.params_unormed[14]
 
         return [fl, fr, bl, br]
 
