@@ -30,6 +30,13 @@ plt.rc('figure', autolayout=True)
 plt.rc('xtick', color='white')
 plt.rc('ytick', color='white')
 
+# plt.style.use('fivethirtyeight')
+# plt.rc('text', usetex=True)
+# plt.rc('font', family='serif')
+# plt.rc('axes', facecolor='white')
+# plt.rc('savefig', facecolor='white')
+# plt.rc('figure', autolayout=True)
+
 RESULT_FOLDER = '/home/gabs48/src/quadruped/tigrillo2/data/analysis/results'
 
 
@@ -126,7 +133,7 @@ class SimpleTable(QtWidgets.QTableWidget):
 
 class SimpleFigure(FigureCanvas):
 
-    def __init__(self, parent=None, subplot=111, width=5, height=4, dpi=100):
+    def __init__(self, parent=None, subplot=111, width=8, height=6, dpi=100):
 
         self.fig = Figure(figsize=(width, height), dpi=dpi)
         self.fig.patch.set_facecolor("None")
@@ -137,6 +144,21 @@ class SimpleFigure(FigureCanvas):
         self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         self.setStyleSheet("background-color:transparent;")
         self.updateGeometry()
+
+    def save(self, name="figure.png"):
+
+        self.axes.xaxis.label.set_color('black')
+        self.axes.yaxis.label.set_color('black')
+        self.axes.title.set_color('black')
+        self.axes.tick_params(axis='x', colors='black')
+        self.axes.tick_params(axis='y', colors='black')
+        self.fig.set_size_inches(7, 5)
+        self.fig.savefig(name, format='png', dpi=300)
+        self.axes.xaxis.label.set_color('white')
+        self.axes.yaxis.label.set_color('white')
+        self.axes.title.set_color('white')
+        self.axes.tick_params(axis='x', colors='white')
+        self.axes.tick_params(axis='y', colors='white')
 
 
 class VizWin(QtWidgets.QGridLayout):
@@ -171,7 +193,6 @@ class VizWin(QtWidgets.QGridLayout):
         data = self.win.sel_conf[self.win.sel_ite]
         l = name.split()[-1]
 
-
         # Multi lines
         if len(data_init[l.lower() + "_rob"].shape) > 1:
 
@@ -188,7 +209,11 @@ class VizWin(QtWidgets.QGridLayout):
             self.plot.axes2.plot(data_init["t"], rob_mean, linewidth=2.5, color=self.getStyleColors()[0], label="Averaged Centered " + l + " Rob")
             self.plot.axes2.plot(data_init["t"], sim_mean, linewidth=2.5, color=self.getStyleColors()[1], label="Averaged Centered " + l + " Sim")
             self.plot.axes2.set_xlim([data_init["t"][0], data_init["t"][-1]])
-            self.plot.axes2.legend(loc='best', fontsize="x-small")
+            self.plot.axes.legend(loc='best', fontsize="x-small")
+            # self.plot.axes.set_title("Periodic average of the robot under-actuated front left leg sensor", fontsize=14)
+            # self.plot.axes.set_ylabel('Leg knee angle (degrees)')
+            # self.plot.axes.set_xlabel('Time (s)')
+
         else:
             self.plot = SimpleFigure()
             self.addWidget(self.plot)
@@ -198,6 +223,7 @@ class VizWin(QtWidgets.QGridLayout):
             self.plot.axes.legend()
 
         self.plot.draw()
+        # self.plot.save("average.png")
 
     def plotEvolution(self):
 
@@ -214,15 +240,17 @@ class VizWin(QtWidgets.QGridLayout):
         self.addWidget(self.plot)
 
         self.plot.axes.cla()
-        self.plot.axes.plot(x, y_max, linestyle="-", color=self.getStyleColors()[1], linewidth=1, label="Max")
-        self.plot.axes.plot(x, y_av, linestyle="-", color=self.getStyleColors()[3], linewidth=1, label="Average")
-        self.plot.axes.plot(x, y_min, linestyle="-", color=self.getStyleColors()[0], linewidth=1, label="Min")
+        self.plot.axes.plot(x, y_max, linestyle="-", color=self.getStyleColors()[1], linewidth=1, label="Generation Maximum")
+        self.plot.axes.plot(x, y_av, linestyle="-", color=self.getStyleColors()[3], linewidth=1, label="Generation Average")
+        self.plot.axes.plot(x, y_min, linestyle="-", color=self.getStyleColors()[0], linewidth=1, label="Generation Minimum")
         self.plot.axes.set_title("Training score of CMA-ES algorithm with popSize = " + str(pop_size), fontsize=14)
-        self.plot.axes.set_ylabel('Score')
+        self.plot.axes.set_ylabel('Sensor Error')
         self.plot.axes.set_xlabel('Generation Epoch')
+        self.plot.axes.legend(loc="upper right", fontsize="small")
         self.plot.axes.xaxis.label.set_color('white')
         self.plot.axes.yaxis.label.set_color('white')
         self.plot.axes.title.set_color('white')
+        # self.plot.save("cma_results.png")
 
     def showSimParams(self):
 

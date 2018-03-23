@@ -13,7 +13,7 @@ import time
 
 def cleanup():
 
-    print('\n\n -- Interrupted by User or Error! Killing all children processes -- \n')
+    print('\n\n -- Quitting and killing all children processes! -- \n')
     process = psutil.Process()
     children = process.children(recursive=True)
     time.sleep(0.2)

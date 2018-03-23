@@ -23,6 +23,9 @@ __date__ = "January 25th, 2018"
 
 # MODEL PARAMETERS
 model_config = {
+    'p': 1.0,
+    'i': 0.01,
+    'd': 0.5,
     'default_height': 0.17,
     'default_density': 100000,
     'body': {
@@ -59,7 +62,7 @@ model_config = {
                 'radius': 0.006,
                 'mu1': 20000,
                 'mu2': 20000,
-                'contact_depth': 0.05,
+                'contact_depth': 0.0005,
             },
             'radius': 0.004,
             'joint_slack': 0.0005,
@@ -88,7 +91,7 @@ model_config = {
                 'radius': 0.006,
                 'mu1': 20000,
                 'mu2': 20000,
-                'contact_depth': 0.05,
+                'contact_depth': 0.0005,
             },
             'radius': 0.004,
             'joint_slack': 0.0005,
@@ -117,7 +120,7 @@ model_config = {
                 'radius': 0.006,
                 'mu1': 20000,
                 'mu2': 20000,
-                'contact_depth': 0.1,
+                'contact_depth': 0.0005,
             },
             'radius': 0.004,
             'joint_slack': 0.0005,
@@ -146,7 +149,7 @@ model_config = {
                 'radius': 0.006,
                 'mu1': 20000,
                 'mu2': 20000,
-                'contact_depth': 0.1,
+                'contact_depth': 0.0005,
             },
             'radius': 0.004,
             'joint_slack': 0.0005,
@@ -196,7 +199,7 @@ class SDFileGenerator(object):
         self.green = "0 1 0 1"
         self.blue = "0 0 1 1"
         self.white = "1 1 1 1"
-        self.black = "0 0 0 0"
+        self.black = "0 0 0 1"
 
         # Parameters
         self.z_offset = self.model_config["default_height"] / self.model_scale
@@ -266,10 +269,9 @@ class SDFileGenerator(object):
             box = etree.Element('box')
             size = etree.Element('size')
             material = etree.Element('material')
-            ambient = etree.Element('ambient')
-            diffuse = etree.Element('diffuse')
-            specular = etree.Element('specular')
-            emissive = etree.Element('emissive')
+            mat_script = etree.Element('script')
+            mat_uri = etree.Element('uri')
+            mat_name = etree.Element('name')
             pose_vis = etree.Element('pose')
             geometry_vis = etree.Element('geometry')
             mesh = etree.Element('mesh')
@@ -285,17 +287,16 @@ class SDFileGenerator(object):
             iyz.text = str(0)
             izz.text = str(ih)
 
-            if part == "middle":
-                ambient.text = self.blue
-                diffuse.text = self.blue
-                specular.text = self.blue
+            mat_uri.text = "file://media/materials/scripts/gazebo.material"
+            if not self.mesh:
+                if part == "middle":
+                    mat_name.text = "Gazebo/Blue"
+                else:
+                    mat_name.text = "Gazebo/Red"
             else:
-                ambient.text = self.red
-                diffuse.text = self.red
-                specular.text = self.red
-            emissive.text = self.black
+                 mat_name.text = "Gazebo/Black"
             uri.text = "model://tigrillo/meshes/" + part + ".dae"
-
+            
             if part == "middle":
                 pose_elem.text = "0 0 " + str(h / 2 + self.z_offset) + " 0 0 0"
                 pose_vis.text = "0 0 " + str(-0.004/self.model_scale) + \
@@ -322,13 +323,14 @@ class SDFileGenerator(object):
             box.extend([size])
             geometry.extend([box])
             col.extend([geometry])
+            mat_script.extend([mat_uri, mat_name])
+            material.extend([mat_script])
             if not self.mesh:
-                material.extend([ambient, diffuse, specular, emissive])
                 vis.extend([copy(geometry), material])
             else:
                 mesh.extend([uri, scale])
                 geometry_vis.extend([mesh])
-                vis.extend([pose_vis, geometry_vis]) 
+                vis.extend([pose_vis, geometry_vis, material]) 
             elem.extend([pose_elem, inertial, col, vis])           
            
 
@@ -385,29 +387,26 @@ class SDFileGenerator(object):
         box = etree.Element('box')
         size = etree.Element('size')
         visual = etree.Element('visual', name=name + "_vis")
-        if not self.mesh:
-            material = etree.Element('material')
-            ambient = etree.Element('ambient')
-            diffuse = etree.Element('diffuse')
-            specular = etree.Element('specular')
-            emissive = etree.Element('emissive')
-        else:
+        material = etree.Element('material')
+        mat_script = etree.Element('script')
+        mat_uri = etree.Element('uri')
+        mat_name = etree.Element('name')
+        if self.mesh:
             geometry_vis = etree.Element('geometry')
             pose_vis = etree.Element('pose')
             mesh = etree.Element('mesh')
             uri = etree.Element('uri')
             scale = etree.Element('scale')
 
-        if not self.mesh:
-            ambient.text = self.green
-            diffuse.text = self.green
-            specular.text = self.green
-            emissive.text = self.black
-        else:
+        mat_uri.text = "file://media/materials/scripts/gazebo.material"
+        if self.mesh:
+            mat_name.text = "Gazebo/Black"
             pose_vis.text = "0 0 0 " + str(-math.pi/2) + " 0 " + str((-1)**((leg_id+1) % 2) * math.pi/2)# + " 0"
             uri.text = "model://tigrillo/meshes/motor.dae"
             scale.text = str(1.0 / (1000 * self.model_scale)) + " " + str(1.0 / (1000 * self.model_scale)) + \
                          " " + str(1.0 / (1000 * self.model_scale))
+        else:
+            mat_name.text = "Gazebo/Green"
 
         pose.text = str(x) + " " + str(y) + " " + str(z) + " 0 0 0"
         size.text = str(motor_w) + " " + str(motor_l) + " " + str(motor_h)
@@ -423,13 +422,14 @@ class SDFileGenerator(object):
         inertial.extend([mass, inertia])
         box.extend([size])
         geometry.extend([box])
+        mat_script.extend([mat_uri, mat_name])
+        material.extend([mat_script])
         if not self.mesh:
-            material.extend([ambient, diffuse, specular, emissive])
             visual.extend([geometry, material])
         else:
             mesh.extend([uri, scale])
             geometry_vis.extend([mesh])
-            visual.extend([pose_vis, geometry_vis])
+            visual.extend([pose_vis, geometry_vis, material])
         collision.extend([copy(geometry)])
         motor.extend([pose, inertial, collision, visual])
 
@@ -509,30 +509,26 @@ class SDFileGenerator(object):
         else:
             cylinder = etree.Element('cylinder', radius=str(r), length=str(l))
         visual = etree.Element('visual', name=name + "_vis")
-        if not self.mesh:
-            material = etree.Element('material')
-            ambient = etree.Element('ambient')
-            diffuse = etree.Element('diffuse')
-            specular = etree.Element('specular')
-            emissive = etree.Element('emissive')
-        else:
+        material = etree.Element('material')
+        mat_script = etree.Element('script')
+        mat_uri = etree.Element('uri')
+        mat_name = etree.Element('name')
+        if  self.mesh:
             geometry_vis = etree.Element('geometry')
             pose_vis = etree.Element('pose')
             mesh = etree.Element('mesh')
             uri = etree.Element('uri')
             scale = etree.Element('scale')
 
-
-        if not self.mesh:
-            ambient.text = self.blue
-            diffuse.text = self.blue
-            specular.text = self.blue
-            emissive.text = self.black
-        else:
+        mat_uri.text = "file://media/materials/scripts/gazebo.material"
+        if  self.mesh:
+            mat_name.text = "Gazebo/Black"
             pose_vis.text = str(-0.004 / self.model_scale) + "0 0 0 0 " + str(math.pi/2) + " 0"
             uri.text = "model://tigrillo/meshes/femur.dae"
             scale.text = str(1.0 / (1000 * self.model_scale)) + " " + str(1.0 / (1000 * self.model_scale)) + \
                          " " + str(1.0 / (1000 * self.model_scale))
+        else:
+            mat_name.text = "Gazebo/Blue"
 
         pose_vis_col_in.text = "0 0 " + str(-l / 2) + " 0 0 0"
         pose.text = str(x_1) + " " + str(y_1) + " " + str(z_1) + " " + str(a) + " 0 0"
@@ -552,13 +548,14 @@ class SDFileGenerator(object):
         inertia.extend([ixx, ixy, ixz, iyy, iyz, izz])
         inertial.extend([copy(pose_vis_col_in), mass, inertia])
         geometry.extend([cylinder])
+        mat_script.extend([mat_uri, mat_name])
+        material.extend([mat_script])
         if not self.mesh:
-            material.extend([ambient, diffuse, specular, emissive])
             visual.extend([copy(pose_vis_col_in), geometry, material])
         else:
             mesh.extend([uri, scale])
             geometry_vis.extend([mesh])
-            visual.extend([pose_vis, geometry_vis])
+            visual.extend([pose_vis, geometry_vis, material])
         collision.extend([copy(pose_vis_col_in), copy(geometry)])
         femur.extend([pose, inertial, collision, visual])
 
@@ -658,13 +655,11 @@ class SDFileGenerator(object):
             tibia_cylinder = etree.Element('cylinder', radius=str(r), length=str(l))
 
         tibia_visual = etree.Element('visual', name=name + "T_vis")
-        if not self.mesh:
-            tibia_material = etree.Element('material')
-            tibia_ambient = etree.Element('ambient')
-            tibia_diffuse = etree.Element('diffuse')
-            tibia_specular = etree.Element('specular')
-            tibia_emissive = etree.Element('emissive')
-        else:
+        tibia_material = etree.Element('material')
+        tibia_mat_script = etree.Element('script')
+        tibia_mat_uri = etree.Element('uri')
+        tibia_mat_name = etree.Element('name')
+        if self.mesh:
             tibia_geometry_vis = etree.Element('geometry')
             tibia_pose_vis = etree.Element('pose')
             tibia_mesh = etree.Element('mesh')
@@ -672,17 +667,15 @@ class SDFileGenerator(object):
             tibia_scale = etree.Element('scale')
 
 
-        if not self.mesh: 
-            tibia_ambient.text = self.green
-            tibia_diffuse.text = self.green
-            tibia_specular.text = self.green
-            tibia_emissive.text = self.black
-        else:
+        tibia_mat_uri.text = "file://media/materials/scripts/gazebo.material"
+        if self.mesh:
+            tibia_mat_name.text = "Gazebo/Black"
             tibia_pose_vis.text = str(-0.004 / self.model_scale) + " 0 " + str(l-f) + " " + str(-3*math.pi/2) + " " + str(0.0872665) + " " + str(math.pi/2) #+ " 0" #str(0.004 / self.model_scale) + " 0 0 0 " + str(-math.pi/2) + " -1.5"# + str(math.pi/2)
             tibia_uri.text = "model://tigrillo/meshes/tibia.dae"
             tibia_scale.text = str(1.0 / (1000 * self.model_scale)) + " " + str(1.0 / (1000 * self.model_scale)) + \
                          " " + str(1.0 / (1000 * self.model_scale))
-
+        else:
+            tibia_mat_name.text = "Gazebo/Blue"
 
         pose.text = str(x_1) + " " + str(y_1) + " " + str(z_1) + " " + str(a) + " 0 0"
         tibia_pose.text = "0 0 " + str(l / 2 - g) + " 0 0 0"
@@ -704,13 +697,14 @@ class SDFileGenerator(object):
 
 
         tibia_geometry.extend([tibia_cylinder])
+        tibia_mat_script.extend([tibia_mat_name, tibia_mat_uri])
+        tibia_material.extend([tibia_mat_script])
         if not self.mesh: 
-            tibia_material.extend([tibia_ambient, tibia_diffuse, tibia_specular, tibia_emissive])
             tibia_visual.extend([copy(tibia_pose), tibia_geometry, tibia_material])
         else:
             tibia_mesh.extend([tibia_uri, tibia_scale])
             tibia_geometry_vis.extend([tibia_mesh])
-            tibia_visual.extend([tibia_pose_vis, tibia_geometry_vis])
+            tibia_visual.extend([tibia_pose_vis, tibia_geometry_vis, tibia_material])
         tibia_collision.extend([copy(tibia_pose), copy(tibia_geometry)])
 
         # Foot
@@ -730,24 +724,23 @@ class SDFileGenerator(object):
         foot_ode = etree.Element("ode")
         foot_mu1 = etree.Element("mu")
         foot_mu2 = etree.Element("mu2")
+        foot_material = etree.Element('material')
+        foot_mat_script = etree.Element('script')
+        foot_mat_uri = etree.Element('uri')
+        foot_mat_name = etree.Element('name')
 
         if not self.mesh: 
             foot_visual = etree.Element('visual', name=name + "F_vis")
-            foot_material = etree.Element('material')
-            foot_ambient = etree.Element('ambient')
-            foot_diffuse = etree.Element('diffuse')
-            foot_specular = etree.Element('specular')
-            foot_emissive = etree.Element('emissive')
 
+        foot_mat_uri.text = "file://media/materials/scripts/gazebo.material"
+        if self.mesh:
+            foot_mat_name.text = "Gazebo/Black"
+        else:
+            foot_mat_name.text = "Gazebo/Blue"
         foot_pose.text = " 0 0 " + str((-g)) + " 0 0 0"
         foot_mu1.text = str(mu1)
         foot_mu2.text = str(mu2)
         foot_min_depth.text = str(contact_depth)
-        if not self.mesh: 
-            foot_ambient.text = self.green
-            foot_diffuse.text = self.green
-            foot_specular.text = self.green
-            foot_emissive.text = self.black
         if self.gazebo:
             foot_radius.text = str(foot_r)
             foot_sphere.extend([foot_radius])
@@ -759,9 +752,9 @@ class SDFileGenerator(object):
         foot_surface.extend([foot_friction, foot_contact])
         foot_geometry.extend([foot_sphere])
         foot_collision.extend([copy(foot_pose), copy(foot_geometry), copy(foot_surface)])
-
+        foot_mat_script.extend([foot_mat_name, foot_mat_uri])
+        foot_material.extend([foot_mat_script])
         if not self.mesh:
-            foot_material.extend([foot_ambient, foot_diffuse, foot_specular, foot_emissive])
             foot_visual.extend([copy(foot_pose),  copy(foot_geometry),  copy(foot_material)])
             leg_down.extend([pose, tibia_inertial, tibia_collision, tibia_visual, foot_collision, foot_visual])
         else:
@@ -822,21 +815,44 @@ class SDFileGenerator(object):
     def generate_xml_plugins(self):
         """ Generate the XML for the model plugins """
 
-        xml_plugin = etree.Element('plugin', name='Tigrillo2Plugin', filename='libTigrillo2Plugin.so')
+        xml_cust_plugin = etree.Element('plugin', name='TigrilloPlugin', filename='libTigrillo2Plugin.so')
 
         param_p = etree.Element("p")
         param_i = etree.Element("i")
         param_d = etree.Element("d")
 
-        param_p.text = "1.0"
-        param_i.text = "0.001"
-        param_d.text = "0.01"
+        param_p.text = str(self.model_config["p"])
+        param_i.text = str(self.model_config["i"])
+        param_d.text = str(self.model_config["d"])
 
-        xml_plugin.append(param_p)
-        xml_plugin.append(param_i)
-        xml_plugin.append(param_d)
+        xml_cust_plugin.append(param_p)
+        xml_cust_plugin.append(param_i)
+        xml_cust_plugin.append(param_d)
 
-        self.plugins_array.extend([xml_plugin])
+        xml_imu_plugin = etree.Element('plugin', name='ImuPlugin', filename='libgazebo_ros_imu.so')
+
+        param_on = etree.Element("alwaysOn")
+        param_body = etree.Element("bodyName")
+        param_topic = etree.Element("topicName")
+        param_service = etree.Element("serviceName")
+        param_gaussian = etree.Element("gaussianNoise")
+        param_rate = etree.Element("updateRate")
+
+        param_on.text = "true"
+        param_body.text = "body_front"
+        param_topic.text = "imu_data"
+        param_service.text = "imu_service"
+        param_gaussian.text = "0.0"
+        param_rate.text = "20.0"
+
+        xml_imu_plugin.append(param_on)
+        xml_imu_plugin.append(param_body)
+        xml_imu_plugin.append(param_topic)
+        xml_imu_plugin.append(param_service)
+        xml_imu_plugin.append(param_gaussian)
+        xml_imu_plugin.append(param_rate)
+
+        self.plugins_array.extend([xml_cust_plugin, xml_imu_plugin])
 
     def generate_xml_sdf(self):
         """ Generate the XML for all the sdf model """
