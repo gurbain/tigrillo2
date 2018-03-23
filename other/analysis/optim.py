@@ -118,6 +118,17 @@ class Score(object):
 
     def score_av_period(self):
 
+        # Return score 10 if falling
+        x_angle = np.array([i["ori_x"]/i["ori_w"] for i in self.imu_sim_sig])
+        if True in (x_angle < -0.4):
+            sys.stdout.write("[Fall     ]\t")
+            return 5
+        if ((x_angle == 0.0).sum() / float(x_angle.size)) > 0.1:
+            sys.stdout.write("[Explosion]\t")
+            return 10
+        sys.stdout.write("[Success  ]\t")
+
+        # NRMSE on the average period otherwise
         self.interpolate()
         self.zeros = utils.zero_crossing(self.fl_act_new, self.t_new)
         #self.plot_av_period_before()
@@ -351,13 +362,13 @@ class Optimization(Score):
         # Optimization metaparameter
         self.params_names = ["Front Mass", "Back Mass", "Front Friction mu1", "Front Friction mu2", "Front Friction Contact Depth",
                              "Back Friction mu1", "Back Friction mu2", "Back Friction Contact Depth", "Front Damping",
-                             "Front Stiffness", "Back Damping", "Back Stiffness", "Motor Correction Factor",
-                             "Front Motor Offset", "Back Motor Offset"]
-        self.params_units = ["kg", "kg", " ", " ", "mm", " ", " ", "mm", "N.s/m", "N/m", "N.s/m", "N/m", " ", "Radians", "Radians"]
+                             "Front Stiffness", "Back Damping", "Back Stiffness", "Controller P",
+                             "Controller I", "Controller D"]
+        self.params_units = ["kg", "kg", " ", " ", "mm", " ", " ", "mm", "N.s/m", "N/m", "N.s/m", "N/m", " ", " ", " "]
         self.params_unormed = []
-        self.params_normed = [0.5, 0.5, 0.8,   0.8,   0.5,  0.8,   0.8,   0.5,  0.1,   0.1,  0.1,   0.1,  0.5, 0.5,        0.5]
-        self.params_min =    [0.1, 0.1, 0.1,   0.1,   0.01, 0.1,   0.1,   0.01, 0.001, 0.01, 0.001, 0.01, 0.8, -math.pi/8, -math.pi/8]
-        self.params_max =    [0.5, 0.5, 20000, 20000, 0.1,  20000, 20000, 0.1,  0.5,   50,   0.5,   50,   1.2, math.pi/8,  math.pi/8]
+        self.params_normed = [0.5, 0.5, 0.8,   0.8,   0.5,  0.8,   0.8,   0.5,  0.1,   0.1,  0.1,   0.1,  1, 0.01, 0.1]
+        self.params_min =    [0.1, 0.1, 0.1,   0.1,   0.01, 0.1,   0.1,   0.01, 0.001, 0.01, 0.001, 0.01, 0.1, 0.001, 0.01]
+        self.params_max =    [0.5, 0.5, 20000, 20000, 0.1,  20000, 20000, 0.1,  0.5,   50,   0.5,   50,   100, 0.1,  10]
 
         self.sim_time = 0
         self.start_time = 20
@@ -465,16 +476,19 @@ class Optimization(Score):
         self.conf["legs"]["BL"]["spring_stiffness"] = self.params_unormed[11]
         self.conf["legs"]["BR"]["knee_damping"] = self.params_unormed[10]
         self.conf["legs"]["BR"]["spring_stiffness"] = self.params_unormed[11]
+        self.conf["p"] = self.params_unormed[12]
+        self.conf["i"] = self.params_unormed[13]
+        self.conf["d"] = self.params_unormed[14]
 
         fg = model.SDFileGenerator(self.conf, self.model_file, model_scale=1, gazebo=True)
         fg.generate()
 
     def act(self, t):
 
-        fl = self.f_fl_act(t) * self.params_unormed[12] + self.params_unormed[13]
-        fr = self.f_fr_act(t) * self.params_unormed[12] + self.params_unormed[13]
-        bl = self.f_bl_act(t) * self.params_unormed[12] + self.params_unormed[14]
-        br = self.f_br_act(t) * self.params_unormed[12] + self.params_unormed[14]
+        fl = self.f_fl_act(t) #* self.params_unormed[12] + self.params_unormed[13]
+        fr = self.f_fr_act(t) #* self.params_unormed[12] + self.params_unormed[13]
+        bl = self.f_bl_act(t) #* self.params_unormed[12] + self.params_unormed[14]
+        br = self.f_br_act(t) #* self.params_unormed[12] + self.params_unormed[14]
 
         return [fl, fr, bl, br]
 
@@ -502,8 +516,10 @@ class Optimization(Score):
             
             # Record simulation sensor signal
             s = p.get_sensors().copy()
+            i = p.get_imu().copy()
             s["time"] += self.start_time
             self.sens_sim_sig.append(s)
+            self.imu_sim_sig.append(i)
 
             # Wait here not to overload the sensor vector
             time.sleep(0.005)

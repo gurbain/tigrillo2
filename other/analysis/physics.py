@@ -12,7 +12,8 @@ import time
 from rosgraph_msgs.msg import Clock
 from gazebo_msgs.msg import ModelStates
 from std_srvs.srv import Empty
-from tigrillo_ctrl.msg import Sensors, Motors, Imu
+from tigrillo_ctrl.msg import Sensors, Motors
+from sensor_msgs.msg import Imu
 
 __author__ = "Gabriel Urbain" 
 __copyright__ = "Copyright 2017, Human Brain Projet, SP10"
@@ -47,11 +48,13 @@ class Gazebo(threading.Thread):
         self.unpause_sim_service = '/gazebo/unpause_physics'
         self.motor_pub_name = 'tigrillo_rob/uart_actuators'
         self.sensor_sub_name = 'tigrillo_rob/sim_sensors'
+        self.imu_sub_name = '/imu_data'
 
         self.sub_clock = None
         self.sub_state = None
         self.sim_duration = 0
         self.sensors = {"time": 0, "FL": 0, "FR": 0, "BL": 0, "BR": 0}
+        self.imu = {"ori_x": 0, "ori_y": 0, "ori_z": 0, "ori_w": 1}
  
         self.daemon = True
 
@@ -64,6 +67,7 @@ class Gazebo(threading.Thread):
         self.motor_pub = ros.Publisher(self.motor_pub_name, Motors, queue_size=1)
         self.sub_clock = ros.Subscriber("/clock", Clock, callback=self._reg_sim_duration, queue_size=1)
         self.sensor_sub = ros.Subscriber(self.sensor_sub_name, Sensors, callback=self._reg_sensors, queue_size=1)
+        self.imu_sub = ros.Subscriber(self.imu_sub_name, Imu, callback=self._reg_imu, queue_size=1)
 
         self.start_gazebo()
 
@@ -139,6 +143,10 @@ class Gazebo(threading.Thread):
 
         return self.sensors
 
+    def get_imu(self):
+
+        return self.imu
+
     def _reg_sim_duration(self, time):
 
         self.sim_duration = time.clock.secs + time.clock.nsecs/1000000000.0
@@ -146,6 +154,11 @@ class Gazebo(threading.Thread):
     def _reg_sensors(self, msg):
 
         self.sensors = {"FR": msg.FR, "FL": msg.FL, "BR": msg.BR, "BL": msg.BL, "time": msg.run_time}
+
+    def _reg_imu(self, msg):
+
+        self.imu = {"ori_x": msg.orientation.x, "ori_y": msg.orientation.y,
+                    "ori_z": msg.orientation.z, "ori_w": msg.orientation.w}
 
     def is_sim_started(self):
 
