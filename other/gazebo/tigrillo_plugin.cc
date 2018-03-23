@@ -1,5 +1,5 @@
-#ifndef _TIGRILLO_PLUGIN_HH_
-#define _TIGRILLO_PLUGIN_HH_
+#ifndef _TIGRILLO2_PLUGIN_HH_
+#define _TIGRILLO2_PLUGIN_HH_
 
 #include <gazebo/gazebo.hh>
 #include <gazebo/physics/physics.hh>
@@ -184,32 +184,32 @@ namespace gazebo
 		public: void SetPositionTarget(float _pos[])
 		{
 			// Set the joint's target position.
-			float p_pos_0 = this->joint_shoulder_L->GetAngle(0).Radian();
-			float p_pos_1 = this->joint_shoulder_R->GetAngle(0).Radian();
-			float p_pos_2 = this->joint_hip_L->GetAngle(0).Radian();
-			float p_pos_3 = this->joint_hip_R->GetAngle(0).Radian();
-			ROS_DEBUG_STREAM("Updating position. Previous " << p_pos_0 << " "
+			float p_pos_0 = this->joint_shoulder_L->GetAngle(0).Degree();
+			float p_pos_1 = this->joint_shoulder_R->GetAngle(0).Degree();
+			float p_pos_2 = this->joint_hip_L->GetAngle(0).Degree();
+			float p_pos_3 = this->joint_hip_R->GetAngle(0).Degree();
+			ROS_INFO_STREAM("Updating position. Previous " << p_pos_0 << " "
 				<< p_pos_1 << " " << p_pos_2 << " " << p_pos_3 << " and new: "
 				<< _pos[0] << " " <<_pos[1] << " " << _pos[2] << " " << _pos[3]);
 
 			if (this->no_pid) {
 				this->model->GetJointController()->SetJointPosition(
-					this->joint_shoulder_L->GetScopedName(), _pos[0]);
+					this->joint_shoulder_L->GetScopedName(), _pos[0] * 0.01745329251);
 				this->model->GetJointController()->SetJointPosition(
-					this->joint_shoulder_R->GetScopedName(), _pos[1]);
+					this->joint_shoulder_R->GetScopedName(), _pos[1] * 0.01745329251);
 				this->model->GetJointController()->SetJointPosition(
-					this->joint_hip_L->GetScopedName(), _pos[2]);
+					this->joint_hip_L->GetScopedName(), _pos[2] * 0.01745329251);
 				this->model->GetJointController()->SetJointPosition(
-					this->joint_hip_R->GetScopedName(), _pos[3]);
+					this->joint_hip_R->GetScopedName(), _pos[3] * 0.01745329251);
 			} else {
 				this->model->GetJointController()->SetPositionTarget(
-					this->joint_shoulder_L->GetScopedName(), _pos[0]);
+					this->joint_shoulder_L->GetScopedName(), _pos[0] * 0.01745329251);
 				this->model->GetJointController()->SetPositionTarget(
-					this->joint_shoulder_R->GetScopedName(), _pos[1]);
+					this->joint_shoulder_R->GetScopedName(), _pos[1] * 0.01745329251);
 				this->model->GetJointController()->SetPositionTarget(
-					this->joint_hip_L->GetScopedName(), _pos[2]);
+					this->joint_hip_L->GetScopedName(), _pos[2] * 0.01745329251);
 				this->model->GetJointController()->SetPositionTarget(
-					this->joint_hip_R->GetScopedName(), _pos[3]);
+					this->joint_hip_R->GetScopedName(), _pos[3] * 0.01745329251);
 			}
 			
 		}

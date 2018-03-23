@@ -37,21 +37,24 @@ f_br = interp1d(br, a_br, kind='cubic')
 f_bl = interp1d(bl, a_bl, kind='cubic')
 x2 = np.linspace(0, 3100)
 
-plt.plot(fr, a_fr, "*", linewidth=2, color=get_style_colors()[0], label="FR")
-plt.plot(x2, f_fr(x2), "--", linewidth=1, color=get_style_colors()[0], label="FR Cubic Interpolation")
-plt.plot(fl, a_fl, "*", linewidth=2, color=get_style_colors()[1], label="FL")
-plt.plot(x2, f_fl(x2), "--", linewidth=1, color=get_style_colors()[1], label="FL Cubic Interpolation")
-plt.plot(br, a_br, "*", linewidth=2, color=get_style_colors()[2], label="BR")
-plt.plot(x2, f_br(x2), "--", linewidth=1, color=get_style_colors()[2], label="BR Cubic Interpolation")
-plt.plot(bl, a_bl, "*", linewidth=2, color=get_style_colors()[3], label="BL")
-plt.plot(x2, f_bl(x2), "--", linewidth=1, color=get_style_colors()[3], label="BL Cubic Interpolation")
+plt.plot(fr, a_fr, "*", linewidth=5, color=get_style_colors()[0])
+plt.plot(x2, f_fr(x2), ":", linewidth=2.5, color=get_style_colors()[0], label="Front Right Interpolation")
+plt.plot(fl, a_fl, "*", linewidth=5, color=get_style_colors()[1])
+plt.plot(x2, f_fl(x2), "-.", linewidth=2.5, color=get_style_colors()[1], label="Front Left Interpolation")
+plt.plot(br, a_br, "*", linewidth=5, color=get_style_colors()[2])
+plt.plot(x2, f_br(x2), "-", linewidth=2.5, color=get_style_colors()[2], label="Back Right Interpolation")
+plt.plot(bl, a_bl, "*", linewidth=5, color=get_style_colors()[3])
+plt.plot(x2, f_bl(x2), "--", linewidth=2.5, color=get_style_colors()[3], label="Back Left Interpolation")
 
 plt.title("Magnet Sensor Transfer Functions")
 plt.xlabel("Sensor values")
 plt.ylabel('Knee angles')
 plt.ylim([30, 140])
-plt.legend(loc="upper left", fontsize="x-small")
+plt.legend(loc="upper left", fontsize="small")
 plt.savefig("calib.png", format='png', dpi=300)
+
+from matplotlib2tikz import save as tikz_save
+tikz_save('calib.tex', figureheight='6cm', figurewidth='7.33cm')
 plt.close()
 
 
