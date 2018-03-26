@@ -114,13 +114,16 @@ class Score(object):
         elif self.score_method  == "spectrogram":
             return self.score_specto()
         elif self.score_method  == "av_period":
-            return self.score_av_period()
+            return self.score_av_period("nrmse")
+        elif self.score_method  == "av_period_corr":
+            return self.score_av_period("corr")
+        elif self.score_method  == "av_period_corr_nrmse":
+            return self.score_av_period("corr_nrmse")
 
-    def score_av_period(self):
+    def score_av_period(self, metric="nrmse"):
 
         self.interpolate()
         self.zeros = utils.zero_crossing(self.fl_act_new, self.t_new)
-        #self.plot_av_period_before()
         c = len(self.zeros)
         r = int(len(self.t_new)/c)
 
@@ -150,30 +153,28 @@ class Score(object):
         fr_rob_mean, fr_sim_mean = utils.center_norm_2(np.mean(self.fr_rob_new, axis=1), np.mean(self.fr_sim_new, axis=1))
         bl_rob_mean, bl_sim_mean = utils.center_norm_2(np.mean(self.bl_rob_new, axis=1), np.mean(self.bl_sim_new, axis=1))
         br_rob_mean, br_sim_mean = utils.center_norm_2(np.mean(self.br_rob_new, axis=1), np.mean(self.br_sim_new, axis=1))
-        #fr_rob_mean = np.mean(self.fr_rob_new, axis=1) - np.mean(np.mean(self.fr_rob_new, axis=1))
-        #bl_rob_mean = np.mean(self.bl_rob_new, axis=1) - np.mean(np.mean(self.bl_rob_new, axis=1))
-        #br_rob_mean = np.mean(self.br_rob_new, axis=1) - np.mean(np.mean(self.br_rob_new, axis=1))
-        #fl_sim_mean = np.mean(self.fl_sim_new, axis=1) - np.mean(np.mean(self.fl_rob_new, axis=1)) 
-        #fr_sim_mean = np.mean(self.fr_sim_new, axis=1) - np.mean(np.mean(self.fr_rob_new, axis=1))
-        #bl_sim_mean = np.mean(self.bl_sim_new, axis=1) - np.mean(np.mean(self.bl_rob_new, axis=1))
-        #br_sim_mean = np.mean(self.br_sim_new, axis=1) - np.mean(np.mean(self.br_rob_new, axis=1))
-
-        #self.plot_av_period_after()
         rob_new = np.vstack((fl_rob_mean, fr_rob_mean, bl_rob_mean, br_rob_mean))
         sim_new = np.vstack((fl_sim_mean, fr_sim_mean, bl_sim_mean, br_sim_mean))
-        #rob_new -= np.mean(np.mean(rob_new, axis=0), axis=1)
-        #sim_new -= np.mean(np.mean(sim_new, axis=0), axis=1)
 
+        # Compute score
+        if metric == "nrmse":
+            score = utils.nrmse(rob_new, sim_new)
+        elif metric == "corr":
+            score = utils.corr(rob_new, sim_new)
+        elif metric == "corr_nrmse":
+            score = utils.corr_nrmse(rob_new, sim_new)
+        else:
+            sys.stdout.write("Warning: no metric has been defined!!\t")
+            return 0
 
-        # Compute score and penalize fall and explosion
-        score = utils.nrmse(rob_new, sim_new)
+        # Penalize fall and explosion
         x_angle = np.array([i["ori_x"]/i["ori_w"] for i in self.imu_sim_sig])
         if True in (x_angle < -0.4):
             sys.stdout.write("[Fall     ]\t")
             if math.isnan(score):
                 score = 1
             else:
-                score += 0.3
+                score += 0.5
         else:
             if ((x_angle == 0.0).sum() / float(x_angle.size)) > 0.1:
                 sys.stdout.write("[Explosion]\t")
@@ -385,7 +386,7 @@ class Optimization(Score):
         self.min = 0
         self.max = 1
         self.pop_size = 0
-        self.score_method = "av_period"
+        self.score_method = "av_period_corr_nrmse"
 
         self.it = 0
         self.pool = 0

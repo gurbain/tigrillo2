@@ -60,7 +60,7 @@ def mse(arr1, arr2):
 
     assert arr1.shape == arr2.shape, "Mean Square Error can only be computed on matrices with same size"
     a, b = arr2.shape
-    return np.sum((arr2 - arr1) ** 2) / float(a * b)
+    return np.sum(np.square(arr2 - arr1)) / float(a * b)
 
 
 def nrmse(arr1, arr2):
@@ -74,6 +74,36 @@ def nrmse(arr1, arr2):
 
     return (rmse / (max_val - min_val))
 
+def corr(arr1, arr2):
+    """ Compute Average Pearson correlation for arrays of sgnals """
+
+    assert arr1.shape == arr2.shape, "Correlation can only be computed on matrices with same size"
+    a, b = arr2.shape
+    c = []
+    for i in range(a):
+        c.append(np.corrcoef(arr1[i,:], arr2[i,:])[1, 0])
+
+    # Recenter in interval 0, 1 where 0 is totally correlated, 0.5 uncorrelated and 1 totally in opposition
+    d = -(sum(c)/len(c))/2 + 0.5
+
+    return d
+
+def corr_nrmse(arr1, arr2):
+    """ Compute NRMSE and multiply by pearson correlation (and then average for multiple signals). """
+
+    assert arr1.shape == arr2.shape, "Correlation can only be computed on matrices with same size"
+    a, b = arr2.shape
+    c = []
+    n = []
+    v = []
+    for i in range(a):
+        n.append(nrmse(np.matrix(arr1[i,:]), np.matrix(arr2[i,:])))
+        c.append(np.corrcoef(arr1[i,:], arr2[i,:])[1, 0])
+        v.append((- c[i]/2 * (n[i] - 0.5)) + 0.5)
+
+    d = sum(v) / len(v)
+
+    return d
 
 def unorm(normed_val, minimums, maximums):
 
