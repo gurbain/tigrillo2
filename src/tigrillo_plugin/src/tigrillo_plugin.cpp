@@ -1,5 +1,5 @@
-#ifndef _TIGRILLO_PLUGIN_HH_
-#define _TIGRILLO_PLUGIN_HH_
+#ifndef _TIGRILLO2_PLUGIN_HH_
+#define _TIGRILLO2_PLUGIN_HH_
 
 #include <gazebo/gazebo.hh>
 #include <gazebo/physics/physics.hh>
@@ -18,27 +18,23 @@
 #include "tigrillo_ctrl/Imu.h"
 #include "tigrillo_ctrl/Sensors.h"
 
-#include "rapidjson/document.h"
-#include "rapidjson/stringbuffer.h"
-#include "rapidjson/writer.h"
-
 namespace gazebo
 {
-	/// \brief A plugin to control a Tigrillo quadruped with ROS.
-	class TigrilloPlugin : public ModelPlugin
+	/// \brief A plugin to control a Tigrillo2 quadruped with ROS.
+	class Tigrillo2Plugin : public ModelPlugin
 	{
 		/// \brief Pointer to the model.
 		private: physics::ModelPtr model;
 		
 		/// \brief Name of the joints.
-		std::string name_shoulder_L = "left_shoulder";
-		std::string name_shoulder_R = "right_shoulder";
-		std::string name_hip_L = "left_hip";
-		std::string name_hip_R = "right_hip";
-		std::string name_elbow_L = "left_elbow";
-		std::string name_elbow_R = "right_elbow";
-		std::string name_knee_L = "left_knee";
-		std::string name_knee_R = "right_knee";
+		std::string name_shoulder_L = "FLUJ";
+		std::string name_shoulder_R = "FRUJ";
+		std::string name_hip_L = "BLUJ";
+		std::string name_hip_R = "BRUJ";
+		std::string name_elbow_L = "FLDJ";
+		std::string name_elbow_R = "FRDJ";
+		std::string name_knee_L = "BLDJ";
+		std::string name_knee_R = "BRDJ";
 
 		/// \brief Pointers to the joints.
 		private: physics::JointPtr joint_shoulder_L;
@@ -58,7 +54,7 @@ namespace gazebo
 		private: bool no_pid = false;
 		
 		/// \brief Constructor
-		public: TigrilloPlugin() {}
+		public: Tigrillo2Plugin() {}
 		
 		/// \brief A node use for ROS transport and its name
 		private: std::unique_ptr<ros::NodeHandle> ros_node;
@@ -91,7 +87,7 @@ namespace gazebo
 		public: virtual void Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 		{
 
-			ROS_INFO("Loading Tigrillo ROS plugin");
+			ROS_INFO("Loading tigrillo 2 ROS plugin");
 			ROS_INFO_STREAM("Gazebo is using the physics engine: " <<
 			_model->GetWorld()->GetPhysicsEngine()->GetType());
 
@@ -188,32 +184,32 @@ namespace gazebo
 		public: void SetPositionTarget(float _pos[])
 		{
 			// Set the joint's target position.
-			float p_pos_0 = this->joint_shoulder_L->GetAngle(0).Radian();
-			float p_pos_1 = this->joint_shoulder_R->GetAngle(0).Radian();
-			float p_pos_2 = this->joint_hip_L->GetAngle(0).Radian();
-			float p_pos_3 = this->joint_hip_R->GetAngle(0).Radian();
-			ROS_DEBUG_STREAM("Updating position. Previous " << p_pos_0 << " "
+			float p_pos_0 = this->joint_shoulder_L->GetAngle(0).Degree();
+			float p_pos_1 = this->joint_shoulder_R->GetAngle(0).Degree();
+			float p_pos_2 = this->joint_hip_L->GetAngle(0).Degree();
+			float p_pos_3 = this->joint_hip_R->GetAngle(0).Degree();
+			ROS_INFO_STREAM("Updating position. Previous " << p_pos_0 << " "
 				<< p_pos_1 << " " << p_pos_2 << " " << p_pos_3 << " and new: "
 				<< _pos[0] << " " <<_pos[1] << " " << _pos[2] << " " << _pos[3]);
 
 			if (this->no_pid) {
 				this->model->GetJointController()->SetJointPosition(
-					this->joint_shoulder_L->GetScopedName(), _pos[0]);
+					this->joint_shoulder_L->GetScopedName(), _pos[0] * 0.01745329251);
 				this->model->GetJointController()->SetJointPosition(
-					this->joint_shoulder_R->GetScopedName(), _pos[1]);
+					this->joint_shoulder_R->GetScopedName(), _pos[1] * 0.01745329251);
 				this->model->GetJointController()->SetJointPosition(
-					this->joint_hip_L->GetScopedName(), _pos[2]);
+					this->joint_hip_L->GetScopedName(), _pos[2] * 0.01745329251);
 				this->model->GetJointController()->SetJointPosition(
-					this->joint_hip_R->GetScopedName(), _pos[3]);
+					this->joint_hip_R->GetScopedName(), _pos[3] * 0.01745329251);
 			} else {
 				this->model->GetJointController()->SetPositionTarget(
-					this->joint_shoulder_L->GetScopedName(), _pos[0]);
+					this->joint_shoulder_L->GetScopedName(), _pos[0] * 0.01745329251);
 				this->model->GetJointController()->SetPositionTarget(
-					this->joint_shoulder_R->GetScopedName(), _pos[1]);
+					this->joint_shoulder_R->GetScopedName(), _pos[1] * 0.01745329251);
 				this->model->GetJointController()->SetPositionTarget(
-					this->joint_hip_L->GetScopedName(), _pos[2]);
+					this->joint_hip_L->GetScopedName(), _pos[2] * 0.01745329251);
 				this->model->GetJointController()->SetPositionTarget(
-					this->joint_hip_R->GetScopedName(), _pos[3]);
+					this->joint_hip_R->GetScopedName(), _pos[3] * 0.01745329251);
 			}
 			
 		}
@@ -224,10 +220,10 @@ namespace gazebo
 		public: void GetSensors(float _sens[])
 		{
 			// Get joint position
-			_sens[0] = this->joint_elbow_L->GetAngle(0).Radian();
-			_sens[1] = this->joint_elbow_R->GetAngle(0).Radian();
-			_sens[2] = this->joint_knee_L->GetAngle(0).Radian();
-			_sens[3] = this->joint_knee_R->GetAngle(0).Radian();
+			_sens[0] = this->joint_elbow_L->GetAngle(0).Degree();
+			_sens[1] = this->joint_elbow_R->GetAngle(0).Degree();
+			_sens[2] = this->joint_knee_L->GetAngle(0).Degree();
+			_sens[3] = this->joint_knee_R->GetAngle(0).Degree();
 
 			// Add noise?
 
@@ -304,7 +300,7 @@ namespace gazebo
 			ros::SubscribeOptions::create<tigrillo_ctrl::Motors>(
 				this->ros_sub_name,
 				1,
-				boost::bind(&TigrilloPlugin::OnRosMsg, this, _1),
+				boost::bind(&Tigrillo2Plugin::OnRosMsg, this, _1),
 				ros::VoidPtr(), &this->ros_queue);
 			this->ros_sub = this->ros_node->subscribe(so);
 
@@ -318,11 +314,11 @@ namespace gazebo
 
 			// Spin up the queue helper thread.
 			this->ros_queue_thread =
-				std::thread(std::bind(&TigrilloPlugin::QueueThread, this));
+				std::thread(std::bind(&Tigrillo2Plugin::QueueThread, this));
 
 			// Publish the sensors on ROS in a thread loop
 			this->ros_send_thread =
-				std::thread(std::bind(&TigrilloPlugin::SendRosMsgThread, this));
+				std::thread(std::bind(&Tigrillo2Plugin::SendRosMsgThread, this));
 		}
 		
 
@@ -338,6 +334,6 @@ namespace gazebo
 	};
 
 	// Tell Gazebo about this plugin, so that Gazebo can call Load on this plugin.
-	GZ_REGISTER_MODEL_PLUGIN(TigrilloPlugin);
+	GZ_REGISTER_MODEL_PLUGIN(Tigrillo2Plugin);
 }
 #endif

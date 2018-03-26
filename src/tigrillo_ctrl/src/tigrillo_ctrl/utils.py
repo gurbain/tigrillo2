@@ -8,7 +8,7 @@ import csv
 import datetime
 import git
 import logging
-from mpi4py import MPI as mpi
+#from mpi4py import MPI as mpi
 import os
 import platform
 from shutil import copyfile

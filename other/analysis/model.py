@@ -815,7 +815,7 @@ class SDFileGenerator(object):
     def generate_xml_plugins(self):
         """ Generate the XML for the model plugins """
 
-        xml_cust_plugin = etree.Element('plugin', name='TigrilloPlugin', filename='libTigrillo2Plugin.so')
+        xml_cust_plugin = etree.Element('plugin', name='TigrilloPlugin', filename='libtigrillo_2_plugin.so')
 
         param_p = etree.Element("p")
         param_i = etree.Element("i")
