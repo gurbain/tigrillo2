@@ -170,7 +170,10 @@ class Score(object):
         x_angle = np.array([i["ori_x"]/i["ori_w"] for i in self.imu_sim_sig])
         if True in (x_angle < -0.4):
             sys.stdout.write("[Fall     ]\t")
-            score += 0.3
+            if math.isnan(score):
+                score = 1
+            else:
+                score += 0.3
         else:
             if ((x_angle == 0.0).sum() / float(x_angle.size)) > 0.1:
                 sys.stdout.write("[Explosion]\t")
