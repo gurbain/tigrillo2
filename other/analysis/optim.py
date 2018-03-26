@@ -118,17 +118,6 @@ class Score(object):
 
     def score_av_period(self):
 
-        # Return score 10 if falling
-        x_angle = np.array([i["ori_x"]/i["ori_w"] for i in self.imu_sim_sig])
-        if True in (x_angle < -0.4):
-            sys.stdout.write("[Fall     ]\t")
-            return 5
-        if ((x_angle == 0.0).sum() / float(x_angle.size)) > 0.1:
-            sys.stdout.write("[Explosion]\t")
-            return 10
-        sys.stdout.write("[Success  ]\t")
-
-        # NRMSE on the average period otherwise
         self.interpolate()
         self.zeros = utils.zero_crossing(self.fl_act_new, self.t_new)
         #self.plot_av_period_before()
@@ -174,7 +163,21 @@ class Score(object):
         sim_new = np.vstack((fl_sim_mean, fr_sim_mean, bl_sim_mean, br_sim_mean))
         #rob_new -= np.mean(np.mean(rob_new, axis=0), axis=1)
         #sim_new -= np.mean(np.mean(sim_new, axis=0), axis=1)
+
+
+        # Compute score and penalize fall and explosion
         score = utils.nrmse(rob_new, sim_new)
+        x_angle = np.array([i["ori_x"]/i["ori_w"] for i in self.imu_sim_sig])
+        if True in (x_angle < -0.4):
+            sys.stdout.write("[Fall     ]\t")
+            score += 0.3
+        else:
+            if ((x_angle == 0.0).sum() / float(x_angle.size)) > 0.1:
+                sys.stdout.write("[Explosion]\t")
+                score = 1
+            else:
+                sys.stdout.write("[Success  ]\t")
+
         return score
 
     def score_specto(self):
