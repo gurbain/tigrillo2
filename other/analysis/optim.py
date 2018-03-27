@@ -378,6 +378,7 @@ class Optimization(Score):
         self.params_max =    [0.5, 0.5, 20000, 20000, 0.1,  20000, 20000, 0.1,  0.5,   50,   0.5,   50,   100, 0.1,  10]
 
         self.sim_time = 0
+        self.sim_timeout = 60
         self.start_time = 20
         self.stop_time = 45
         self.pool_number = 1
@@ -507,8 +508,12 @@ class Optimization(Score):
 
 
         # Wait for the gzserver process to be started
+        t_init = time.time()
         while not p.is_sim_started():
             time.sleep(0.001)
+            if (time.time() - t_init) > self.sim_timeout:
+                p.stop()
+                return -1
 
         # Perform simulation loop
         t = self.start_time
@@ -553,12 +558,16 @@ class Optimization(Score):
         self.model()
 
         # Perform simulation
-        self.sim()
+        res = self.sim()
         self.t_it_stop = time.time()
         self.pool += 1
 
         # Compare similarity and save
-        score = self.get_score()
+        if res == -1:
+            sys.stdout.write("[Sim Crash]\t")
+            score = 1
+        else:
+            score = self.get_score()
         sys.stdout.write("Score = {0:.4f}".format(score))
         sys.stdout.write("\t\t(st: " + str(self.stop_time - self.start_time) + \
                          "s, rt: {0:.2f}s)\n".format(self.t_it_stop - t_it_init))
@@ -599,6 +608,7 @@ class Optimization(Score):
             to_save["bag_file"] = self.bag_file
             to_save["model_file"] = self.model_file
             to_save["sim_time"] = self.sim_time
+            to_save["sim_timeout"] = self.sim_timeout
             to_save["start_time"] = self.start_time
             to_save["stop_time"] = self.stop_time
             to_save["pop"] = self.pop_size

@@ -81,7 +81,7 @@ class Gazebo(threading.Thread):
 
         self.sim_status = self.get_gazebo_status()
         if self.sim_status == psutil.STATUS_RUNNING or self.sim_status == psutil.STATUS_SLEEPING:
-            print("Simulation is already started")
+            sys.stdout.write("Already started!  ")
             return
 
         proc = [self.sim_ps_name, self.sim_package, self.sim_node, self.sim_model]

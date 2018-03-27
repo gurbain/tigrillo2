@@ -1,6 +1,6 @@
 <?xml version="1.0" ?>
 <sdf version="1.4">
-<param name="/use_sim_time" value="true"/>
+<!-- <param name="/use_sim_time" value="true"/> -->
   <world name="default">
 
     <!-- Physics and settings -->

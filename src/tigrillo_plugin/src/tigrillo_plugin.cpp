@@ -14,9 +14,9 @@
 #include "ros/subscribe_options.h"
 
 #include "std_msgs/String.h"
-#include "tigrillo_ctrl/Motors.h"
-#include "tigrillo_ctrl/Imu.h"
-#include "tigrillo_ctrl/Sensors.h"
+#include "tigrillo_plugin/Motors.h"
+#include "tigrillo_plugin/Imu.h"
+#include "tigrillo_plugin/Sensors.h"
 
 namespace gazebo
 {
@@ -87,7 +87,7 @@ namespace gazebo
 		public: virtual void Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 		{
 
-			ROS_INFO("Loading tigrillo 2 ROS plugin");
+			ROS_INFO("Loading the Tigrillo Plugin");
 			ROS_INFO_STREAM("Gazebo is using the physics engine: " <<
 			_model->GetWorld()->GetPhysicsEngine()->GetType());
 
@@ -97,7 +97,7 @@ namespace gazebo
 				freq = _sdf->Get<double>("freq");
 			}
 			this->pub_freq = freq;
-			ROS_INFO_STREAM("Sensor Publication frequency has been set to: " << this->pub_freq << " Hz");
+			ROS_INFO_STREAM("Sensor Publication frequency on ROS has been set to: " << this->pub_freq << " Hz");
 
 			// Set PID parameters
 			double p = 5;
@@ -233,7 +233,7 @@ namespace gazebo
 		/// \brief Handle an incoming message from ROS
 		/// \param[in] _msg A float value that is used to set the actuators 
 		// positions
-		public: void OnRosMsg(const tigrillo_ctrl::MotorsConstPtr &_msg)
+		public: void OnRosMsg(const tigrillo_plugin::MotorsConstPtr &_msg)
 		{
 			// Convert message to array of four floats 
 			float position[4];
@@ -258,7 +258,7 @@ namespace gazebo
 				this->GetSensors(sensors);
 
 	   			// Send over ROS
-	   			tigrillo_ctrl::Sensors msg;
+	   			tigrillo_plugin::Sensors msg;
 	   			msg.FL = sensors[0];
 	   			msg.FR = sensors[1];
 	   			msg.BL = sensors[2];
@@ -297,7 +297,7 @@ namespace gazebo
 			// Create a named topic, and subscribe to it
 			ROS_INFO_STREAM("Subscribe to topic: " + this->ros_sub_name);
 			ros::SubscribeOptions so =
-			ros::SubscribeOptions::create<tigrillo_ctrl::Motors>(
+			ros::SubscribeOptions::create<tigrillo_plugin::Motors>(
 				this->ros_sub_name,
 				1,
 				boost::bind(&Tigrillo2Plugin::OnRosMsg, this, _1),
@@ -307,7 +307,7 @@ namespace gazebo
 			// Create a named topic for publication
 			ROS_INFO_STREAM("Publish in topic: " + this->ros_pub_name);
 			this->ros_pub = 
-				this->ros_node->advertise<tigrillo_ctrl::Sensors>(this->ros_pub_name, 1);
+				this->ros_node->advertise<tigrillo_plugin::Sensors>(this->ros_pub_name, 1);
 
 			// Create a timer for publication
 			this->pub_rate.reset(new ros::Rate(this->pub_freq));
