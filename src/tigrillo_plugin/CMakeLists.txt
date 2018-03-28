@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-set(PROJECT_NAME "tigrillo_plugin")
+set(PROJECT_NAME "tigrillo_2_plugin")
 project(${PROJECT_NAME})
 
 # check c++11 / c++0x
@@ -40,14 +40,11 @@ add_message_files(DIRECTORY msg
           Motors.msg
 )
 
-#catkin_python_setup()
-
 ## Generate added messages and services with any dependencies listed here
 generate_messages(
   DEPENDENCIES
   std_msgs
 )
-
 
 ###################################
 ## catkin specific configuration ##
@@ -60,8 +57,8 @@ generate_messages(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include
-  LIBRARIES tigrillo_plugin
-  CATKIN_DEPENDS gazebo_ros gazebo_msgs roscpp message_runtime std_msgs
+  LIBRARIES tigrillo_2_plugin
+  CATKIN_DEPENDS gazebo_ros gazebo_msgs roscpp std_msgs
 #  DEPENDS system_lib
 )
 
@@ -79,17 +76,16 @@ include_directories(
 )
 
 ## Declare a cpp library
- add_library(tigrillo_plugin
+ add_library(tigrillo_2_plugin
    src/tigrillo_plugin.cpp
  )
-add_dependencies(tigrillo_plugin ${PROJECT_NAME}_generate_messages_cpp )
 
 #link_directories(
 #  ${OGRE_LIBRARY_DIRS}
 #)
 
 ## Specify libraries to link a library or executable target against
- target_link_libraries(tigrillo_plugin
+ target_link_libraries(tigrillo_2_plugin
    ${catkin_LIBRARIES}
    ${GAZEBO_LIBRARIES}
  )
@@ -102,6 +98,6 @@ add_dependencies(tigrillo_plugin ${PROJECT_NAME}_generate_messages_cpp )
 # See http://ros.org/doc/api/catkin/html/adv_user_guide/variables.html
 
 ## Mark executables and/or libraries for installation
-install(TARGETS tigrillo_plugin
+install(TARGETS tigrillo_2_plugin
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 )

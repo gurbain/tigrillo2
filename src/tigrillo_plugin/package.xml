@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
-<package format="2">
-  <name>tigrillo_plugin</name>
+<package>
+  <name>tigrillo_2_plugin</name>
   <version>0.0.2</version>
   <description>A plugin package to add a actuation handle and custom sensors to the Tigrillo robot</description>
 
@@ -22,13 +22,12 @@
   <build_depend>roscpp</build_depend>
   <build_depend>std_msgs</build_depend>
   <build_depend>message_generation</build_depend>
-  <build_export_depend>message_runtime</build_export_depend>
-  <exec_depend>tf</exec_depend>
-  <exec_depend>gazebo</exec_depend>
-  <exec_depend>gazebo_ros</exec_depend>
-  <exec_depend>gazebo_msgs</exec_depend>
-  <exec_depend>roscpp</exec_depend>
-  <exec_depend>std_msgs</exec_depend>
-
-  <export></export>
+  <run_depend>tf</run_depend>
+  <run_depend>gazebo</run_depend>
+  <run_depend>gazebo_ros</run_depend>
+  <run_depend>gazebo_msgs</run_depend>
+  <run_depend>roscpp</run_depend>
+  <run_depend>std_msgs</run_depend>
+  <run_depend>message_runtime</run_depend>
+  
 </package>

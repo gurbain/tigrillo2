@@ -239,6 +239,7 @@ class Score(object):
         bl_rob = np.array([d["BL"] for d in sens_rob])
         br_sim = np.array([d["BR"] for d in sens_sim])
         br_rob = np.array([d["BR"] for d in sens_rob])
+
         self.f_fl_sim = interp1d(t_sim, fl_sim, kind='cubic', assume_sorted=False)
         self.f_fl_rob = interp1d(t_rob, fl_rob, kind='cubic', assume_sorted=False)
         self.f_fr_sim = interp1d(t_sim, fr_sim, kind='cubic', assume_sorted=False)

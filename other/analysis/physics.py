@@ -12,7 +12,7 @@ import time
 from rosgraph_msgs.msg import Clock
 from gazebo_msgs.msg import ModelStates
 from std_srvs.srv import Empty
-from tigrillo_ctrl.msg import Sensors, Motors
+from tigrillo_2_plugin.msg import Sensors, Motors
 from sensor_msgs.msg import Imu
 
 __author__ = "Gabriel Urbain" 
@@ -46,8 +46,8 @@ class Gazebo(threading.Thread):
         self.reset_sim_service = '/gazebo/reset_simulation'
         self.pause_sim_service = '/gazebo/pause_physics'
         self.unpause_sim_service = '/gazebo/unpause_physics'
-        self.motor_pub_name = 'tigrillo_rob/uart_actuators'
-        self.sensor_sub_name = 'tigrillo_rob/sim_sensors'
+        self.motor_pub_name = '/tigrillo_rob/uart_actuators'
+        self.sensor_sub_name = '/tigrillo_rob/sim_sensors'
         self.imu_sub_name = '/imu_data'
 
         self.sub_clock = None

@@ -38,9 +38,9 @@
 #include "ros/subscribe_options.h"
 
 #include "std_msgs/String.h"
-#include "tigrillo_plugin/Motors.h"
-#include "tigrillo_plugin/Imu.h"
-#include "tigrillo_plugin/Sensors.h"
+#include "tigrillo_2_plugin/Motors.h"
+#include "tigrillo_2_plugin/Imu.h"
+#include "tigrillo_2_plugin/Sensors.h"
 
 namespace gazebo
 {
@@ -121,7 +121,7 @@ namespace gazebo
     /// \brief Handle an incoming message from ROS
     /// \param[in] _msg A float value that is used to set the actuators 
     // positions
-    public: void OnRosMsg(const tigrillo_plugin::MotorsConstPtr &_msg);
+    public: void OnRosMsg(const tigrillo_2_plugin::MotorsConstPtr &_msg);
 
     /// \brief Thread that publishes the sensor messages on ROS
     private: void SendRosMsgThread();
