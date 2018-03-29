@@ -11,6 +11,7 @@ from scipy.signal import blackmanharris, fftconvolve, butter, filtfilt
 from shutil import copyfile
 import time
 
+
 def cleanup():
 
     print('\n\n -- Quitting and killing all children processes! -- \n')
@@ -74,6 +75,7 @@ def nrmse(arr1, arr2):
 
     return (rmse / (max_val - min_val))
 
+
 def corr(arr1, arr2):
     """ Compute Average Pearson correlation for arrays of sgnals """
 
@@ -87,6 +89,7 @@ def corr(arr1, arr2):
     d = -(sum(c)/len(c))/2 + 0.5
 
     return d
+
 
 def corr_nrmse(arr1, arr2):
     """ Compute NRMSE and multiply by pearson correlation (and then average for multiple signals). """
@@ -104,6 +107,7 @@ def corr_nrmse(arr1, arr2):
     d = sum(v) / len(v)
 
     return d
+
 
 def unorm(normed_val, minimums, maximums):
 

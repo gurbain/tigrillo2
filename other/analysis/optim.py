@@ -25,10 +25,10 @@ import model
 import physics
 import utils
 
-BAG_FILE = '/home/gabs48/src/quadruped/tigrillo2/data/analysis/bags/robot_model_calibration_data.bag'
-MODEL_FILE = '/home/gabs48/.gazebo/models/tigrillo/model.sdf'
-SIM_FILE = '/home/gabs48/src/quadruped/tigrillo2/other/analysis/tigrillo.world'
-SAVE_FOLDER = '/home/gabs48/src/quadruped/tigrillo2/data/analysis/results'
+BAG_FILE = '/home/gurbain/tigrillo2/data/analysis/bags/robot_model_calibration_data.bag'
+MODEL_FILE = '/home/gurbain/.gazebo/models/tigrillo/model.sdf'
+SIM_FILE = '/home/gurbain/tigrillo2/other/analysis/tigrillo.world'
+SAVE_FOLDER = '/home/gurbain/tigrillo2/data/analysis/results'
 TOPICS = ['/tigrillo_rob/uart_actuators', '/tigrillo_rob/uart_sensors', '/tigrillo_rob/i2c_sensors']
 
 
@@ -370,13 +370,12 @@ class Optimization(Score):
         # Optimization metaparameter
         self.params_names = ["Front Mass", "Back Mass", "Front Friction mu1", "Front Friction mu2", "Front Friction Contact Depth",
                              "Back Friction mu1", "Back Friction mu2", "Back Friction Contact Depth", "Front Damping",
-                             "Front Stiffness", "Back Damping", "Back Stiffness", "Controller P",
-                             "Controller I", "Controller D"]
-        self.params_units = ["kg", "kg", " ", " ", "mm", " ", " ", "mm", "N.s/m", "N/m", "N.s/m", "N/m", " ", " ", " "]
+                             "Front Stiffness", "Back Damping", "Back Stiffness"] #, "Controller P", "Controller I", "Controller D"]]
+        self.params_units = ["kg", "kg", " ", " ", "mm", " ", " ", "mm", "N.s/m", "N/m", "N.s/m", "N/m"] # " ", " ", " "]
         self.params_unormed = []
-        self.params_normed = [0.5, 0.5, 0.8,   0.8,   0.5,  0.8,   0.8,   0.5,  0.1,   0.1,  0.1,   0.1,  1, 0.01, 0.1]
-        self.params_min =    [0.1, 0.1, 0.1,   0.1,   0.01, 0.1,   0.1,   0.01, 0.001, 0.01, 0.001, 0.01, 0.1, 0.001, 0.01]
-        self.params_max =    [0.5, 0.5, 20000, 20000, 0.1,  20000, 20000, 0.1,  0.5,   50,   0.5,   50,   100, 0.1,  10]
+        self.params_normed = [0.5, 0.5, 0.8,   0.8,   0.5,  0.8,   0.8,   0.5,  0.1,   0.1,  0.1,   0.1] #  1, 0.01, 0.1]
+        self.params_min =    [0.1, 0.1, 0.1,   0.1,   0.01, 0.1,   0.1,   0.01, 0.001, 0.01, 0.001, 0.01] # 0.1, 0.001, 0.01]
+        self.params_max =    [0.5, 0.5, 20000, 20000, 0.1,  20000, 20000, 0.1,  0.5,   50,   0.5,   50] # 100, 0.1,  10]
 
         self.sim_time = 0
         self.sim_timeout = 60
@@ -388,7 +387,7 @@ class Optimization(Score):
         self.min = 0
         self.max = 1
         self.pop_size = 0
-        self.score_method = "av_period_corr_nrmse"
+        self.score_method = "av_period"
 
         self.it = 0
         self.pool = 0
@@ -485,9 +484,9 @@ class Optimization(Score):
         self.conf["legs"]["BL"]["spring_stiffness"] = self.params_unormed[11]
         self.conf["legs"]["BR"]["knee_damping"] = self.params_unormed[10]
         self.conf["legs"]["BR"]["spring_stiffness"] = self.params_unormed[11]
-        self.conf["p"] = self.params_unormed[12]
-        self.conf["i"] = self.params_unormed[13]
-        self.conf["d"] = self.params_unormed[14]
+        # self.conf["p"] = self.params_unormed[12]
+        # self.conf["i"] = self.params_unormed[13]
+        # self.conf["d"] = self.params_unormed[14]
 
         fg = model.SDFileGenerator(self.conf, self.model_file, model_scale=1, gazebo=True)
         fg.generate()

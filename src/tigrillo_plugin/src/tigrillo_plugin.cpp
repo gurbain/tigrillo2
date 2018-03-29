@@ -7,7 +7,7 @@ namespace gazebo
 	void TigrilloPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 	{
 
-		ROS_INFO("Loading the Tigrillo Plugin");
+		ROS_INFO("Loading Tigrillo Plugin");
 		ROS_INFO_STREAM("Gazebo is using the physics engine: " <<
 		_model->GetWorld()->GetPhysicsEngine()->GetType());
 

@@ -24,8 +24,8 @@ __date__ = "January 25th, 2018"
 # MODEL PARAMETERS
 model_config = {
     'p': 1.0,
-    'i': 0.01,
-    'd': 0.5,
+    'i': 0.0,
+    'd': 0.0,
     'default_height': 0.17,
     'default_density': 100000,
     'body': {
