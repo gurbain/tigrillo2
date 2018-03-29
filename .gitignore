@@ -18,6 +18,13 @@ data/analysis/*
 *.pkl
 *.npy
 *.png
+!docs/
+!docs/*
+!docs/*/*
+!docs/*/*/*
+!docs/*/*/*/*
+!docs/*/*/*/*/*
+!docs/*/*/*/*/*/*
 !src/tigrillo_plot/plotter_gui
 !src/tigrillo_plot/plotter_gui/*
 !src/tigrillo_plot/plotter_gui/*/*

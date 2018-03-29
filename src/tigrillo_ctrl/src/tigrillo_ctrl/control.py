@@ -28,6 +28,29 @@ __status__ = "Research"
 __date__ = "June 14th, 2017"
 
 
+
+sine_config = {"Controller": {"params":
+                    "[{'f': 6, 'a': 0.4, 'phi': 0}, \
+                    {'f': 6, 'a': 0.4, 'phi': 0},\
+                    {'f': 6, 'a': 0.4, 'phi': 3.14},\
+                    {'f': 6, 'a': 0.4, 'phi': 3.14}]",
+                    "time_step": 0.001,
+                    "sim_time": 5}}
+
+cpg_config = {"Controller": {"params": 
+                "[{'mu': 0.4, 'o': 0, 'omega': 6.35, 'duty_factor': 0.6, "
+                "'phase_offset': 0, 'coupling': [5,5,5,0]},"
+                "{'mu': 0.4, 'o': 0, 'omega': 6.35, 'duty_factor': 0.6, "
+                "'phase_offset': 6.28, 'coupling': [5,5,5,0]},"
+                "{'mu': 0.4, 'o': 0, 'omega': 6.35, 'duty_factor': 0.9, "
+                "'phase_offset': 3.14, 'coupling': [5,5,5,0]},"
+                "{'mu': 0.4, 'o': 0, 'omega': 6.35, 'duty_factor': 0.9, "
+                "'phase_offset': 3.14, 'coupling': [5,5,5,0]}]",
+                "integ_time": 0.001,
+                "time_step": 0.01,
+                "sim_time": 10}}
+
+
 class Controller(object):
 
     def __init__(self, configuration):
@@ -322,18 +345,19 @@ class CPG(Controller):
     def step(self, t):
 
         self.t = t
-        n_steps = (int(self.t/self.dt) - self.prev_t)
+        n_steps = int(float(self.t)/self.dt - self.prev_t)
         cmd = []
         if n_steps == 0:
             n_steps = 1
-            ros.logerr("Controller time step (" + str((self.t - self.prev_t)*1000) +
+            ros.logerr("Controller time step (" + str(float(self.t)/self.dt - self.prev_t) +
                            "ms) is too low for numerical integration (dt = " + str(self.dt*1000) + " ms). " +
                            "Truncating control signal to avoid stopping software!")
+            print float(self.t)/self.dt, self.prev_t
 
         for _ in range(n_steps):
             cmd = self.step_cpg()
 
-        self.prev_t = int(self.t/self.dt)
+        self.prev_t = float(self.t/self.dt)
 
         return cmd
 
@@ -371,18 +395,11 @@ class AdaptableCPG(CPG):
 if __name__ == '__main__':
 
     # Test Sine evolution
-    config = {"Controller":
-                {"params": "[{'f': 6, 'a': 0.4, 'phi': 0}, \
-                        {'f': 6, 'a': 0.4, 'phi': 0},\
-                        {'f': 6, 'a': 0.4, 'phi': 3.14},\
-                        {'f': 6, 'a': 0.4, 'phi': 3.14}]",
-                "time_step": 0.001,
-                "sim_time": 5}}
     t = 0
-    dt = config["Controller"]["time_step"]
-    st = config["Controller"]["sim_time"]
+    dt = sine_config["Controller"]["time_step"]
+    st = sine_config["Controller"]["sim_time"]
     n = int(st / dt)
-    sc = Sine(config)
+    sc = Sine(sine_config)
 
     t_init = time.time()
     for i in range(n):
@@ -394,24 +411,11 @@ if __name__ == '__main__':
     sc.plot("sine.png")
 
     # Test CPG evolution
-    config = {"Controller": {"params": "[{'mu': 0.4, 'o': 0, 'omega': 6.35, 'duty_factor': 0.6, "
-                                       "'phase_offset': 0, 'coupling': [5,5,5,0]},"
-                                       "{'mu': 0.4, 'o': 0, 'omega': 6.35, 'duty_factor': 0.6, "
-                                       "'phase_offset': 6.28, 'coupling': [5,5,5,0]},"
-                                       "{'mu': 0.4, 'o': 0, 'omega': 6.35, 'duty_factor': 0.9, "
-                                       "'phase_offset': 3.14, 'coupling': [5,5,5,0]},"
-                                       "{'mu': 0.4, 'o': 0, 'omega': 6.35, 'duty_factor': 0.9, "
-                                       "'phase_offset': 3.14, 'coupling': [5,5,5,0]}]",
-                             "integ_time": 0.001,
-                             "time_step": 0.01,
-                             "sim_time": 10}
-              }
-
     t = 0
-    dt = config["Controller"]["time_step"]
-    st = config["Controller"]["sim_time"]
+    dt = cpg_config["Controller"]["time_step"]
+    st = cpg_config["Controller"]["sim_time"]
     n = int(st / dt)
-    sc = CPG(config)
+    sc = CPG(cpg_config)
 
     t_init = time.time()
     for i in range(n):

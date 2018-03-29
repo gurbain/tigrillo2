@@ -46,6 +46,8 @@ class Gazebo(threading.Thread):
         self.reset_sim_service = '/gazebo/reset_simulation'
         self.pause_sim_service = '/gazebo/pause_physics'
         self.unpause_sim_service = '/gazebo/unpause_physics'
+        self.pose_sub_name = '/gazebo/model_states'
+        self.clock_sub_name = '/clock'
         self.motor_pub_name = '/tigrillo_rob/uart_actuators'
         self.sensor_sub_name = '/tigrillo_rob/sim_sensors'
         self.imu_sub_name = '/imu_data'
@@ -55,6 +57,7 @@ class Gazebo(threading.Thread):
         self.sim_duration = 0
         self.sensors = {"time": 0, "FL": 0, "FR": 0, "BL": 0, "BR": 0}
         self.imu = {"ori_x": 0, "ori_y": 0, "ori_z": 0, "ori_w": 1}
+        self.pose = {"x": 0, "y": 0, "z": 0, "a_x": 0, "a_y": 0, "a_z": 0, "a_w": 0}
  
         self.daemon = True
 
@@ -65,10 +68,10 @@ class Gazebo(threading.Thread):
         self.pause_sim_proxy = ros.ServiceProxy(self.pause_sim_service, Empty)
         self.unpause_sim_proxy = ros.ServiceProxy(self.unpause_sim_service, Empty)
         self.motor_pub = ros.Publisher(self.motor_pub_name, Motors, queue_size=1)
-        self.sub_clock = ros.Subscriber("/clock", Clock, callback=self._reg_sim_duration, queue_size=1)
+        self.sub_clock = ros.Subscriber(self.clock_sub_name, Clock, callback=self._reg_sim_duration, queue_size=1)
         self.sensor_sub = ros.Subscriber(self.sensor_sub_name, Sensors, callback=self._reg_sensors, queue_size=1)
         self.imu_sub = ros.Subscriber(self.imu_sub_name, Imu, callback=self._reg_imu, queue_size=1)
-
+        self.pose_sub = ros.Subscriber(self.pose_sub_name, ModelStates,callback=self._reg_pose, queue_size=1)
         self.start_gazebo()
 
     def stop(self):
@@ -147,6 +150,10 @@ class Gazebo(threading.Thread):
 
         return self.imu
 
+    def get_pose(self):
+
+        return self.pose
+
     def _reg_sim_duration(self, time):
 
         self.sim_duration = time.clock.secs + time.clock.nsecs/1000000000.0
@@ -159,6 +166,21 @@ class Gazebo(threading.Thread):
 
         self.imu = {"ori_x": msg.orientation.x, "ori_y": msg.orientation.y,
                     "ori_z": msg.orientation.z, "ori_w": msg.orientation.w}
+
+    def _reg_pose(self, msg):
+
+        index = -1
+        for i, name in enumerate(msg.name):
+            if name == "tigrillo":
+                index = i
+
+        if index != -1:
+            p = msg.pose[index].position
+            o = msg.pose[index].orientation
+            self.pose = {"x": p.x, "y": p.y, "z": p.z,
+                        "a_x": o.x, "a_y": o.y, "a_z": o.z, "a_w": o.w}
+
+        return
 
     def is_sim_started(self):
 
@@ -179,10 +201,11 @@ if __name__ == '__main__':
         p = Gazebo()
         p.start()
 
-        # Check time for 10 seconds
-        for j in range(11):
+        # Check time for 20 seconds
+        for j in range(21):
             print("Time: " + str(j) + "s and sim time: " + str(p.get_gazebo_time()) + \
-                  "s and status: " + str(p.get_gazebo_status()))
+                  "s and status: " + str(p.get_gazebo_status()) + \
+                  " and X position: " + str(p.get_pose()['x']))
             if ros.is_shutdown():
                 p.stop()
                 exit(-1)
