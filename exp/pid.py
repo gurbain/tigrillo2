@@ -25,16 +25,17 @@ import model
 import physics
 import utils
 
-from tigrillo_ctrl import control
-
 SIM_FILE = '/home/gabs48/src/quadruped/tigrillo2/exp/tigrillo.world'
 MODEL_FILE = '/home/gabs48/.gazebo/models/tigrillo/model.sdf'
-SAVE_FOLDER = '/home/gabs48/src/quadruped/tigrillo2/data/gait/results'
-
+SAVE_FOLDER = '/home/gabs48/src/quadruped/tigrillo2/data/pid/results'
+COMMAND = 80
 
 class Score(object):
 
     def __init__(self):
+
+        self.explosion_penalty = 10000
+        self.fall_penalty = 0
 
         return      
 
@@ -42,14 +43,44 @@ class Score(object):
 
         return
 
+    def detect_failure(self):
+
+        x_angle = np.array([i["ori_x"]/i["ori_w"] for i in self.imu_sig])
+
+        # Fall
+        if True in (x_angle < -0.4):
+            sys.stdout.write("[Fall     ]\t")
+            return self.fall_penalty
+
+        # Explosion
+        if ((x_angle == 0.0).sum() / float(x_angle.size)) > 0.1:
+            sys.stdout.write("[Explosion]\t")
+            return self.explosion_penalty
+
+        sys.stdout.write("[Success  ]\t")
+        return 0
+
     def get_score(self):
 
-        if self.score_method  == "distance":
-            return self.score_dist()
+        # Detect a simulation failure (explosion, fall)
+        penalty = self.detect_failure()
+        if penalty == self.explosion_penalty:
+            return penalty
 
-    def score_dist(self):
+        # Otherwise return the score
+        if self.score_method  == "err_static":
+            return self.score_static_err() + penalty
 
-        return  -math.sqrt(self.pose[-1]["x"]** 2 + self.pose[-1]["y"] ** 2)
+    def score_static_err(self):
+
+        # Average the last 30 percent
+        l = int(0.3 * len(self.mot_sig))
+        fl_err = np.abs(np.mean(np.array([a["FL"] for a in self.mot_sig[-l:]]) - COMMAND))
+        fr_err = np.abs(np.mean(np.array([a["FR"] for a in self.mot_sig[-l:]]) - COMMAND))
+        bl_err = np.abs(np.mean(np.array([a["BL"] for a in self.mot_sig[-l:]]) - COMMAND))
+        br_err = np.abs(np.mean(np.array([a["BR"] for a in self.mot_sig[-l:]]) - COMMAND))
+
+        return fl_err + br_err + bl_err + br_err
 
 
 class Optimization(Score):
@@ -63,33 +94,31 @@ class Optimization(Score):
         self.cma_data_filename = self.save_folder + "cmaes_evolution.pkl"
 
         self.model_conf = None
-        self.cpg_conf = None
-        self.cpg = None
 
         self.sens_sig = []
+        self.mot_sig = []
         self.imu_sig = []
         self.pose = []
         self.norm_params = []
 
         # Optimization metaparameter
-        self.params_names   = ["Mu Back", "Mu Front", "Duty Factor Back", "Duty Factor Front", "Phase Offset Back", 
-                               "Phase Offset Front", " Offset Back", "Offset Front"] # , "Omega"]
-        self.params_units   = ["Degrees", "Degrees", "Ratio", "Ratio", "Radians", "Radians", "Degrees", "Degrees"] #, "Radians/s"]
+        self.params_names   = ["Kp", "Ki", "Kd"]
+        self.params_units   = ["", "", ""]
         self.params_unormed = []
-        self.params_normed  = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5] #, 0.5]
-        self.params_min     = [0, 0, 0, 0, 0, 0, -60, -60] # , 0]
-        self.params_max     = [100, 100, 1, 1, math.pi, math.pi, 60, 60] # , 4 * math.pi]
+        self.params_normed  = [0.5, 0.5, 0.5]
+        self.params_min     = [0.1, 0.00001, 0.001]
+        self.params_max     = [100, 0.01, 1]
 
         self.sim_time = 0
         self.stop_time = 10
         self.sim_timeout = 20
-        self.pool_number = 2
+        self.pool_number = 1
         self.max_iter = 2000
         self.init_var = 0.2
         self.min = 0
         self.max = 1
         self.pop_size = 0
-        self.score_method = "distance"
+        self.score_method = "err_static"
 
         self.pool = 0
         self.it = 0
@@ -101,54 +130,19 @@ class Optimization(Score):
 
     def model(self):
 
-        # Commented: We don't change the model parameters right now!!
-        # self.model_conf = model.model_config
-        # self.model_conf["body"]["front"]["mass"] = 1.0
-        # fg = model.SDFileGenerator(self.model_conf, self.model_file, model_scale=1, gazebo=True)
-        # fg.generate()
-
-        # We set the controller here
         self.params_unormed = utils.unorm(self.params_normed, self.params_min, self.params_max)
-        dir(control)
-        self.cpg_conf = control.cpg_config
-        mu_b   = self.params_unormed[0]
-        mu_f   = self.params_unormed[1]
-        duty_b = self.params_unormed[2]
-        duty_f = self.params_unormed[3]
-        off_b  = self.params_unormed[4]
-        off_f  = self.params_unormed[5]
-        o_b  = self.params_unormed[6]
-        o_f  = self.params_unormed[7]
-        omega  = 2 * math.pi #self.params_unormed[8]
-        coupling = "[5,5,5,0]"
-        params = "["
 
-        for front in range(2):
-            params += "{'mu': " + str(mu_f) + ","
-            params += "'o': " + str(o_f) + ","
-            params += "'duty_factor': " + str(duty_f) + ","
-            params += "'phase_offset': " + str(off_f) + ","
-            params += "'omega': " + str(omega) + ","
-            params += "'coupling': " + str(coupling) + "}, "
-        for back in range(2):
-            params += "{'mu': " + str(mu_b) + ","
-            params += "'o': " + str(o_b) + ","
-            params += "'duty_factor': " + str(duty_b) + ","
-            params += "'phase_offset': " + str(off_b) + ","
-            params += "'omega': " + str(omega) + ","
-            params += "'coupling': " + str(coupling) + "}, "
+        self.model_conf = model.model_config
+        self.model_conf["p"] = self.params_unormed[0]
+        self.model_conf["i"] = self.params_unormed[1]
+        self.model_conf["d"] = self.params_unormed[2]
 
-        params += "]"
-        self.cpg_conf["Controller"]["params"] = params
-        self.cpg = control.CPG(self.cpg_conf)
+        fg = model.SDFileGenerator(self.model_conf, self.model_file, model_scale=1, gazebo=True)
+        fg.generate()
 
     def act(self, t):
 
-        # Check if right data format and apply actuation
-        a = self.cpg.step(t)
-        if a:
-            if len(a) == 4:
-                return a
+        return [COMMAND, COMMAND, COMMAND, COMMAND]
 
     def sim(self):
 
@@ -179,17 +173,15 @@ class Optimization(Score):
             # Get sim time
             t = p.get_gazebo_time()
 
-            # Check that the gazebo timestep is larger than the CPG integration timestep
-            if t - prev_t > self.cpg.dt:
-
-                # Actuate
-                command = self.act(t)
-                p.actuate(command)
-                
-                # Record simulation sensor signal
-                self.sens_sig.append(p.get_sensors().copy())
-                self.imu_sig.append(p.get_imu().copy())
-                self.pose.append(p.get_pose().copy())
+            # Actuate
+            command = self.act(t)
+            p.actuate(command)
+            
+            # Record simulation sensor signal
+            self.sens_sig.append(p.get_sensors().copy())
+            self.mot_sig.append(p.get_motors().copy())
+            self.imu_sig.append(p.get_imu().copy())
+            self.pose.append(p.get_pose().copy())
 
             # Wait here not to overload the sensor vector
             time.sleep(0.001)
@@ -201,11 +193,11 @@ class Optimization(Score):
     def cleanup(self):
 
         self.sens_sig = []
+        self.mot_sig = []
         self.imu_sig = []
         self.pose = []
         self.model_conf = []
         self.norm_params = []
-        self.cpg = None
         super(Optimization, self).cleanup()
 
     def pool_eval(self, parameters):
@@ -259,7 +251,7 @@ class Optimization(Score):
 
     def save(self):
 
-        to_save = {"iter": self.it, "score": self.score, "params": self.params_normed, "cpg_conf": self.cpg_conf, \
+        to_save = {"iter": self.it, "score": self.score, "params": self.params_normed, "mot_sig": self.mot_sig, \
                    "model_conf": self.model_conf, "elapsed time": self.t_it_stop - self.t_init}
         if self.it == 0:
             to_save["file_script"] = open(os.path.basename(__file__), 'r').read()

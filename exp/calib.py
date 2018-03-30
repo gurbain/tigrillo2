@@ -25,10 +25,10 @@ import model
 import physics
 import utils
 
-BAG_FILE = '/home/gurbain/tigrillo2/data/analysis/bags/robot_model_calibration_data.bag'
-MODEL_FILE = '/home/gurbain/.gazebo/models/tigrillo/model.sdf'
-SIM_FILE = '/home/gurbain/tigrillo2/other/analysis/tigrillo.world'
-SAVE_FOLDER = '/home/gurbain/tigrillo2/data/analysis/results'
+BAG_FILE = '/home/gabs48/src/quadruped/tigrillo2/data/analysis/bags/robot_model_calibration_data.bag'
+MODEL_FILE = '/home/gabs48/.gazebo/models/tigrillo/model.sdf'
+SIM_FILE = '/home/gabs48/src/quadruped/tigrillo2/exp/tigrillo.world'
+SAVE_FOLDER = '/home/gabs48/src/quadruped/tigrillo2/data/analysis/results'
 TOPICS = ['/tigrillo_rob/uart_actuators', '/tigrillo_rob/uart_sensors', '/tigrillo_rob/i2c_sensors']
 
 
@@ -506,7 +506,6 @@ class Optimization(Score):
         p = physics.Gazebo()
         p.start()
 
-
         # Wait for the gzserver process to be started
         t_init = time.time()
         while not p.is_sim_started():
@@ -518,7 +517,14 @@ class Optimization(Score):
         # Perform simulation loop
         t = self.start_time
         i = 0
+        t_init = time.time()
         while t < self.stop_time:
+
+            # Timeout if failure
+            if (time.time() - t_init) > self.sim_timeout:
+                p.stop()
+                return -1
+
             # Get sim time
             t = p.get_gazebo_time() + self.start_time
 
@@ -565,11 +571,11 @@ class Optimization(Score):
         # Compare similarity and save
         if res == -1:
             sys.stdout.write("[Sim Crash]\t")
-            score = 1
+            score = np.nan
         else:
             score = self.get_score()
         sys.stdout.write("Score = {0:.4f}".format(score))
-        sys.stdout.write("\t\t(st: " + str(self.stop_time - self.start_time) + \
+        sys.stdout.write("\t(st: " + str(self.stop_time - self.start_time) + \
                          "s, rt: {0:.2f}s)\n".format(self.t_it_stop - t_it_init))
 
         return score
@@ -584,7 +590,7 @@ class Optimization(Score):
                 score_arr.append(self.pool_eval(parameters))
             
             self.pool = 0
-            self.score = sum(score_arr) / len(score_arr)
+            self.score = np.nanmean(np.array(score_arr))
             print("Iteration average score = {0:.4f}\n".format(self.score))
         else:
             self.score = self.pool_eval(parameters)

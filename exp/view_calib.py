@@ -97,10 +97,10 @@ class SimpleSimulation(object):
 
     def getActuator(self, st):
 
-        fl = self.f_fl(st) * self.params_unormed[12] + self.params_unormed[13]
-        fr = self.f_fr(st) * self.params_unormed[12] + self.params_unormed[13]
-        bl = self.f_bl(st) * self.params_unormed[12] + self.params_unormed[14]
-        br = self.f_br(st) * self.params_unormed[12] + self.params_unormed[14]
+        fl = self.f_fl(st) #* self.params_unormed[12] + self.params_unormed[13]
+        fr = self.f_fr(st) #* self.params_unormed[12] + self.params_unormed[13]
+        bl = self.f_bl(st) #* self.params_unormed[12] + self.params_unormed[14]
+        br = self.f_br(st) #* self.params_unormed[12] + self.params_unormed[14]
 
         return [fl, fr, bl, br]
 

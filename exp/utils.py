@@ -1,13 +1,9 @@
 import copy
 import numpy as np
-from numpy.fft import rfft
-from numpy import argmax, mean, diff, log
-from matplotlib.mlab import find
 import os
-from parabolic import parabolic
 import pickle
 import psutil
-from scipy.signal import blackmanharris, fftconvolve, butter, filtfilt
+from scipy.signal import butter, filtfilt
 from shutil import copyfile
 import time
 
@@ -148,43 +144,6 @@ def center_norm_2(sig_drive, sig_follow):
     sig_drive = (sig_drive - sig_min) / (sig_max - sig_min)
     sig_follow = (sig_follow - sig_min) / (sig_max - sig_min)
     return [sig_drive - 0.5, sig_follow - 0.5]
-
-
-def freq(sig, fs):
-    """
-    Estimate frequency using harmonic product spectrum (HPS)
-    from here: https://gist.github.com/endolith/255291
-    """ 
-
-    corr = fftconvolve(sig, sig[::-1], mode='full')
-    corr = corr[len(corr)//2:]
-    d = diff(corr)
-    start = find(d > 0)[0]
-    peak = argmax(corr[start:]) + start
-    px, py = parabolic(corr, peak)
-    return fs / px
-
-
-def freq2(sig, fs):
-    """
-    Estimate frequency from peak of FFT
-    """
-
-    windowed = sig * blackmanharris(len(sig))
-    f = rfft(windowed)
-    i = argmax(abs(f))
-    true_i = parabolic(log(abs(f)), i)[0]
-    return fs * true_i / len(windowed)
-
-
-def freq3(sig, fs):
-    """
-    Estimate frequency by counting zero crossings
-    """
-
-    indices = find((sig[1:] >= 0) & (sig[:-1] < 0))
-    crossings = [i - sig[i] / (sig[i+1] - sig[i]) for i in indices]
-    return fs / mean(diff(crossings))
 
 
 def divide_periodic(f, x, y):

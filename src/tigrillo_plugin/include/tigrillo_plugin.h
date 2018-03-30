@@ -89,8 +89,10 @@ namespace gazebo
     private: ros::Subscriber ros_sub;
 
     /// \brief A ROS publisher, its name and timer
-    private: std::string ros_pub_name = "sim_sensors";
-    private: ros::Publisher ros_pub;
+    private: std::string ros_pub_name_s = "sim_sensors";
+    private: ros::Publisher ros_pub_s;
+    private: std::string ros_pub_name_m = "sim_motors";
+    private: ros::Publisher ros_pub_m;
     private: std::unique_ptr<ros::Rate> pub_rate;
     private: int pub_freq;
 
@@ -100,8 +102,11 @@ namespace gazebo
     /// \brief A thread that keep running the ros_queue
     private: std::thread ros_queue_thread;
 
-    /// \brief A thread to send the ROS messages
-    private: std::thread ros_send_thread;
+    /// \brief A thread to publish the sensor position over ROS
+    private: std::thread ros_sen_thread;
+
+    /// \brief A thread to publish the motor position over ROS
+    private: std::thread ros_mot_thread;
 
     /// \brief The load function is called by Gazebo when the plugin is
     /// inserted into simulation
@@ -117,6 +122,10 @@ namespace gazebo
     /// \brief Retrieve all sensors
     /// \param[in] _sens Array of the sensor values
     public: void GetSensors(float _sens[]);
+
+    /// \brief Retrieve all sensors
+    /// \param[in] _sens Array of the sensor values
+    public: void GetMotors(float _mot[]);
     
     /// \brief Handle an incoming message from ROS
     /// \param[in] _msg A float value that is used to set the actuators 
@@ -124,7 +133,10 @@ namespace gazebo
     public: void OnRosMsg(const tigrillo_2_plugin::MotorsConstPtr &_msg);
 
     /// \brief Thread that publishes the sensor messages on ROS
-    private: void SendRosMsgThread();
+    private: void SendRosMsgSenThread();
+
+    /// \brief Thread that publishes the motor messages on ROS
+    private: void SendRosMsgMotThread();
 
     /// \brief Implement ROS initialization
     private: void RosInit();

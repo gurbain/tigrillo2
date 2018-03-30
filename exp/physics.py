@@ -50,12 +50,14 @@ class Gazebo(threading.Thread):
         self.clock_sub_name = '/clock'
         self.motor_pub_name = '/tigrillo_rob/uart_actuators'
         self.sensor_sub_name = '/tigrillo_rob/sim_sensors'
+        self.motor_sub_name = '/tigrillo_rob/sim_motors'
         self.imu_sub_name = '/imu_data'
 
         self.sub_clock = None
         self.sub_state = None
         self.sim_duration = 0
         self.sensors = {"time": 0, "FL": 0, "FR": 0, "BL": 0, "BR": 0}
+        self.motors = {"time": 0, "FL": 0, "FR": 0, "BL": 0, "BR": 0}
         self.imu = {"ori_x": 0, "ori_y": 0, "ori_z": 0, "ori_w": 1}
         self.pose = {"x": 0, "y": 0, "z": 0, "a_x": 0, "a_y": 0, "a_z": 0, "a_w": 0}
  
@@ -70,8 +72,9 @@ class Gazebo(threading.Thread):
         self.motor_pub = ros.Publisher(self.motor_pub_name, Motors, queue_size=1)
         self.sub_clock = ros.Subscriber(self.clock_sub_name, Clock, callback=self._reg_sim_duration, queue_size=1)
         self.sensor_sub = ros.Subscriber(self.sensor_sub_name, Sensors, callback=self._reg_sensors, queue_size=1)
+        self.motor_sub = ros.Subscriber(self.motor_sub_name, Motors, callback=self._reg_motors, queue_size=1)
         self.imu_sub = ros.Subscriber(self.imu_sub_name, Imu, callback=self._reg_imu, queue_size=1)
-        self.pose_sub = ros.Subscriber(self.pose_sub_name, ModelStates,callback=self._reg_pose, queue_size=1)
+        self.pose_sub = ros.Subscriber(self.pose_sub_name, ModelStates, callback=self._reg_pose, queue_size=1)
         self.start_gazebo()
 
     def stop(self):
@@ -146,6 +149,10 @@ class Gazebo(threading.Thread):
 
         return self.sensors
 
+    def get_motors(self):
+
+        return self.motors
+
     def get_imu(self):
 
         return self.imu
@@ -161,6 +168,10 @@ class Gazebo(threading.Thread):
     def _reg_sensors(self, msg):
 
         self.sensors = {"FR": msg.FR, "FL": msg.FL, "BR": msg.BR, "BL": msg.BL, "time": msg.run_time}
+
+    def _reg_motors(self, msg):
+
+        self.motors = {"FR": msg.FR, "FL": msg.FL, "BR": msg.BR, "BL": msg.BL, "time": msg.run_time}
 
     def _reg_imu(self, msg):
 
