@@ -43,7 +43,7 @@ class UARTDaemon(threading.Thread):
         self.ser_baud = ser_baud
         self.ser_conn = None
 
-        self.data_buffer = deque([])
+        self.data_buffer = None
         self.ack_buffer = deque([])
 
         self.stop = True
@@ -89,9 +89,7 @@ class UARTDaemon(threading.Thread):
             data.update(sv)
             del data["Sensors values"]
 
-        self.data_buffer.append(data)
-        if len(self.data_buffer) > MAX_BUFFER_SIZE:
-            self.data_buffer.popleft()
+        self.data_buffer = data
 
     def _add_ack(self, ack):
         """ Add a ack line in the uart buffer """
@@ -108,8 +106,7 @@ class UARTDaemon(threading.Thread):
     def read_data(self):
         """ Read the last data line in the uart buffer """
 
-        if self.data_buffer:
-            return self.data_buffer.pop()
+        return self.data_buffer
 
     def read_r_ack(self):
         """ Read the last rst ack line in the uart buffer """
@@ -147,23 +144,33 @@ class UARTDaemon(threading.Thread):
     def run(self):
         """ Read and populate the buffer"""
 
+        word = ""
+        vals = []
         while not self.stop:
-            line = self.ser_conn.readline()
-            dico = dict()
-            try:
-                dico = ast.literal_eval(str(line))
-            except SyntaxError or ValueError or TypeError:
-                ros.logwarn("Malformed UART packet. Ignoring line: " + str(line))
-                pass
-            except Exception as ex:
-                ros.logwarn("Unknown exception when reading UART sensor values: " + str(ex))
-                pass
+            for read in self.ser_conn.read():
+                ch = str(read)
+                if ch != "," and ch !=";":
+                    word += ch
+                if ch == ",":
+                    try:
+                        vals.append(int(word))
+                    except ValueError:
+                        pass
+                    word = ""
 
-            if "DATA" in dico:
-                self._add_data(dico["DATA"])
-            if "ACK" in dico:
-                self._add_ack(dico["ACK"])
-            time.sleep(self.read_period)
+                if ch == ";":
+                    try:
+                        vals.append(int(word))
+                    except ValueError:
+                        pass
+                    word = ""
+                    try:
+                        if len(vals) == 4:
+                            self._add_data({"Front Right": vals[0], "Front Left": vals[1],
+                                            "Back Right": vals[2], "Back Left": vals[3]})
+                    except ValueError:
+                        pass
+                    vals = []
 
 
 if __name__ == "__main__":
