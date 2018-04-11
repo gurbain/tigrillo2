@@ -1,0 +1,8 @@
+string model_name                    # name of Gazebo Model
+string link_name                     # name of Gazebo Link
+string visual_name                   # name of Gazebo Visual
+string property_name                 # property identifier
+string property_value                # new property value
+---
+bool success                         # return true if get successful
+string status_message                # comments if available

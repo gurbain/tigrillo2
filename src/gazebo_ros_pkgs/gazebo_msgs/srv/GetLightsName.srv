@@ -1,0 +1,4 @@
+---
+string[] light_names                 # list of light names
+bool success                         # return true if get successful
+string status_message                # comments if available

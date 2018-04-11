@@ -13,11 +13,22 @@ data/analysis/*
 
 # Pictures and data
 *.csv
-*.png
 *.jpg
 *.jpeg
 *.pkl
 *.npy
+*.png
+!docs/
+!docs/*
+!docs/*/*
+!docs/*/*/*
+!docs/*/*/*/*
+!docs/*/*/*/*/*
+!docs/*/*/*/*/*/*
+!src/tigrillo_plot/plotter_gui
+!src/tigrillo_plot/plotter_gui/*
+!src/tigrillo_plot/plotter_gui/*/*
+!src/tigrillo_plot/plotter_gui/*/*/*
 
 # Other built files
 *build*
