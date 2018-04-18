@@ -23,9 +23,9 @@ __date__ = "January 25th, 2018"
 
 # MODEL PARAMETERS
 model_config = {
-    'p': 1.0,
-    'i': 0.001,
-    'd': 0.01,
+    'p': 1000.0,
+    'i': 0,
+    'd': 0,
     'default_height': 0.17,
     'default_density': 100000,
     'body': {
@@ -60,8 +60,8 @@ model_config = {
             },
             'foot': {
                 'radius': 0.006,
-                'mu1': 20000,
-                'mu2': 20000,
+                'mu1': 1,
+                'mu2': 1,
                 'contact_depth': 0.0005,
             },
             'radius': 0.004,
@@ -69,14 +69,14 @@ model_config = {
             'position': 'front',
             'femur_length': 0.07,
             'femur_angle': 0.25,
-            'tibia_length': 0.085,
+            'tibia_length': 0.09,
             'spring_length': 0.025,
             'femur_spring_tibia_joint_dst': 0.045,
             'tibia_spring_to_joint_dst': 0.035,
             'hip_damping': 0.05,
             'knee_damping': 0.1,
-            'spring_stiffness': 50,
-            'spring_comp_tol': 0.1,
+            'spring_stiffness': 8,
+            'spring_comp_tol': 0.89,
             'actuator_kp': 254,
         },
         'FR': {
@@ -89,8 +89,8 @@ model_config = {
             },
             'foot': {
                 'radius': 0.006,
-                'mu1': 20000,
-                'mu2': 20000,
+                'mu1': 1,
+                'mu2': 1,
                 'contact_depth': 0.0005,
             },
             'radius': 0.004,
@@ -98,14 +98,14 @@ model_config = {
             'position': 'front',
             'femur_length': 0.07,
             'femur_angle': 0.25,
-            'tibia_length': 0.085,
+            'tibia_length': 0.09,
             'spring_length': 0.025,
             'femur_spring_tibia_joint_dst': 0.045,
             'tibia_spring_to_joint_dst': 0.035,
             'hip_damping': 0.05,
             'knee_damping': 0.1,
-            'spring_stiffness': 50,
-            'spring_comp_tol': 0.1,
+            'spring_stiffness': 8,
+            'spring_comp_tol': 0.96,
             'actuator_kp': 254,
         },
         'BL': {
@@ -118,8 +118,8 @@ model_config = {
             },
             'foot': {
                 'radius': 0.006,
-                'mu1': 20000,
-                'mu2': 20000,
+                'mu1': 1,
+                'mu2': 1,
                 'contact_depth': 0.0005,
             },
             'radius': 0.004,
@@ -127,14 +127,14 @@ model_config = {
             'position': 'front',
             'femur_length': 0.07,
             'femur_angle': 0.25,
-            'tibia_length': 0.085,
+            'tibia_length': 0.09,
             'spring_length': 0.025,
             'femur_spring_tibia_joint_dst': 0.045,
             'tibia_spring_to_joint_dst': 0.035,
             'hip_damping': 0.05,
             'knee_damping': 0.1,
-            'spring_stiffness': 50,
-            'spring_comp_tol': 0.1,
+            'spring_stiffness': 10,
+            'spring_comp_tol': 0.873,
             'actuator_kp': 254,
         },
         'BR': {
@@ -147,8 +147,8 @@ model_config = {
             },
             'foot': {
                 'radius': 0.006,
-                'mu1': 20000,
-                'mu2': 20000,
+                'mu1': 1,
+                'mu2': 1,
                 'contact_depth': 0.0005,
             },
             'radius': 0.004,
@@ -156,14 +156,14 @@ model_config = {
             'position': 'front',
             'femur_length': 0.07,
             'femur_angle': 0.25,
-            'tibia_length': 0.085,
+            'tibia_length': 0.09,
             'spring_length': 0.025,
             'femur_spring_tibia_joint_dst': 0.045,
             'tibia_spring_to_joint_dst': 0.035,
             'hip_damping': 0.05,
             'knee_damping': 0.1,
-            'spring_stiffness': 50,
-            'spring_comp_tol': 0.1,
+            'spring_stiffness': 10,
+            'spring_comp_tol': 0.785,
             'actuator_kp': 254,
         },
     },
@@ -670,7 +670,7 @@ class SDFileGenerator(object):
         tibia_mat_uri.text = "file://media/materials/scripts/gazebo.material"
         if self.mesh:
             tibia_mat_name.text = "Gazebo/Black"
-            tibia_pose_vis.text = str(-0.004 / self.model_scale) + " 0 " + str(l-f) + " " + str(-3*math.pi/2) + " " + str(0.0872665) + " " + str(math.pi/2) #+ " 0" #str(0.004 / self.model_scale) + " 0 0 0 " + str(-math.pi/2) + " -1.5"# + str(math.pi/2)
+            tibia_pose_vis.text = str(0.004 / self.model_scale) + " 0 " + str(-l + 1.2 * g) + str(-math.pi/2) + " 0 " + str(math.pi/2) #+ " 0" #str(0.004 / self.model_scale) + " 0 0 0 " + str(-math.pi/2) + " -1.5"# + str(math.pi/2)
             tibia_uri.text = "model://tigrillo/meshes/tibia.dae"
             tibia_scale.text = str(1.0 / (1000 * self.model_scale)) + " " + str(1.0 / (1000 * self.model_scale)) + \
                          " " + str(1.0 / (1000 * self.model_scale))
@@ -678,7 +678,7 @@ class SDFileGenerator(object):
             tibia_mat_name.text = "Gazebo/Blue"
 
         pose.text = str(x_1) + " " + str(y_1) + " " + str(z_1) + " " + str(a) + " 0 0"
-        tibia_pose.text = "0 0 " + str(l / 2 - g) + " 0 0 0"
+        tibia_pose.text = "0 0 " + str(-l /2 + g) + " 0 0 0"
         tibia_mass.text = str(m)
         tibia_ixx.text = str(ir)
         tibia_ixy.text = str(0)
@@ -737,7 +737,7 @@ class SDFileGenerator(object):
             foot_mat_name.text = "Gazebo/Black"
         else:
             foot_mat_name.text = "Gazebo/Blue"
-        foot_pose.text = " 0 0 " + str((-g)) + " 0 0 0"
+        foot_pose.text = " 0 0 " + str(-l+g) + " 0 0 0"
         foot_mu1.text = str(mu1)
         foot_mu2.text = str(mu2)
         foot_min_depth.text = str(contact_depth)
@@ -778,7 +778,7 @@ class SDFileGenerator(object):
         j_xyz.text = "1 0 0"
         j_damping.text = str(damp)
         j_spring_stiffness.text = str(k_spring * g * math.acos((e**2 + g**2 - f**2) / (2 * e * g)))
-        j_lower.text = str(- compression_tol)
+        j_lower.text = str(compression_tol - a)
         j_upper.text = str(math.pi/2)
 
         j_dynamics.extend([j_damping, j_spring_stiffness])
