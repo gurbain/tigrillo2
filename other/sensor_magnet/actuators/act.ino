@@ -50,8 +50,6 @@ void loop() {
 
 void processRx(byte* buffer, byte size) {
 
-	SerialUSB.println("yoh");
-
 	// Ensure buffer is clean by setting next address value to 0 (not always true but don't know why)
   	buffer[size] = '\0';
 
@@ -111,9 +109,7 @@ void updateMotors(int act_leg[]) {
 
 void emptyStr(char* tab, int size) {
 
-	for (int i = 0; i < size; i++) {
-		tab[i] = '\0';
-	}
+	tab = NULL;
 
 }
 
@@ -127,8 +123,9 @@ int str2i(char* str, int* tab, int size) {
 	while(*end) {
 		errno = 0;
 		int n = strtol(str, &end, 10);
-		if (str == end)
+		if (str == end) {
 			return -3;
+		}
 		else if (errno != 0 && n == 0)
 			return -4;
 		

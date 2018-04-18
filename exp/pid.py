@@ -217,7 +217,7 @@ class Optimization(Score):
 
         # Compare similarity and save
         if res == -1:
-            sys.stdout.write("[Sim Crash]\t")
+            sys.stdout.write("[Sim Crash]")
             score = np.nan
         else:
             score = self.get_score()

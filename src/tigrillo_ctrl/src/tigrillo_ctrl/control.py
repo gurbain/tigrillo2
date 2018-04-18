@@ -271,7 +271,7 @@ class CPG(Controller):
         self.f_phi = [0] * 4
         self.f_o = [0] * 4
 
-        self.dt = float(self.config["Controller"]["integ_time"])
+        self.dt = 0.001#float(self.config["Controller"]["integ_time"])
         self.gamma = 0.1
         self.prev_t = -1
 

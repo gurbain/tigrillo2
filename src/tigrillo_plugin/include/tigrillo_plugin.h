@@ -76,7 +76,11 @@ namespace gazebo
     private: common::PID pid_hip_L;
     private: common::PID pid_hip_R;
     private: bool no_pid = false;
-    
+
+    /// \brief The original knee angle of the static model to add as an
+    /// offset to the valuye measured by gazebo
+    private: float knee_angle = 33.80731;
+
     /// \brief Constructor
     public: TigrilloPlugin() {}
     

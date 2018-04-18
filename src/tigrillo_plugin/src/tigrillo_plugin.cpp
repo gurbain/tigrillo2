@@ -136,10 +136,10 @@ namespace gazebo
 	void TigrilloPlugin::GetSensors(float _sens[])
 	{
 		// Get joint position
-		_sens[0] = this->joint_elbow_L->GetAngle(0).Degree();
-		_sens[1] = this->joint_elbow_R->GetAngle(0).Degree();
-		_sens[2] = this->joint_knee_L->GetAngle(0).Degree();
-		_sens[3] = this->joint_knee_R->GetAngle(0).Degree();
+		_sens[0] = this->joint_elbow_L->GetAngle(0).Degree() + this->knee_angle;
+		_sens[1] = this->joint_elbow_R->GetAngle(0).Degree() + this->knee_angle;
+		_sens[2] = this->joint_knee_L->GetAngle(0).Degree() + this->knee_angle;
+		_sens[3] = this->joint_knee_R->GetAngle(0).Degree() + this->knee_angle;
 
 		// Add noise?
 	}
