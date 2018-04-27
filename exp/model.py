@@ -75,8 +75,8 @@ model_config = {
             'tibia_spring_to_joint_dst': 0.035,
             'hip_damping': 0.05,
             'knee_damping': 0.1,
-            'spring_stiffness': 8,
-            'spring_comp_tol': 0.89,
+            'spring_stiffness': 5,
+            'spring_comp_tol': 1.11,
             'actuator_kp': 254,
         },
         'FR': {
@@ -104,8 +104,8 @@ model_config = {
             'tibia_spring_to_joint_dst': 0.035,
             'hip_damping': 0.05,
             'knee_damping': 0.1,
-            'spring_stiffness': 8,
-            'spring_comp_tol': 0.96,
+            'spring_stiffness': 5,
+            'spring_comp_tol': 1.15,
             'actuator_kp': 254,
         },
         'BL': {

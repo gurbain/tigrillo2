@@ -25,7 +25,7 @@ import model
 import physics
 import utils
 
-BAG_FILE = '/home/gabs48/src/quadruped/tigrillo2/data/analysis/bags/robot_model_calibration_data.bag'
+BAG_FILE = '/home/gabs48/src/quadruped/tigrillo2/data/analysis/bags/robot_model_calibration_data_25_04_2018.bag'
 MODEL_FILE = '/home/gabs48/.gazebo/models/tigrillo/model.sdf'
 SIM_FILE = '/home/gabs48/src/quadruped/tigrillo2/exp/tigrillo.world'
 SAVE_FOLDER = '/home/gabs48/src/quadruped/tigrillo2/data/analysis/results'
@@ -370,24 +370,24 @@ class Optimization(Score):
         # Optimization metaparameter
         self.params_names = ["Front Mass", "Back Mass", "Front Friction mu1", "Front Friction mu2", "Front Friction Contact Depth",
                              "Back Friction mu1", "Back Friction mu2", "Back Friction Contact Depth", "Front Damping",
-                             "Front Stiffness", "Back Damping", "Back Stiffness"] #, "Controller P", "Controller I", "Controller D"]]
-        self.params_units = ["kg", "kg", " ", " ", "mm", " ", " ", "mm", "N.s/m", "N/m", "N.s/m", "N/m"] # " ", " ", " "]
+                             "Front Stiffness", "Back Damping", "Back Stiffness", "Front Compression Tolerance", "Back Compression Tolerance",]
+        self.params_units = ["kg", "kg", " ", " ", "mm", " ", " ", "mm", "N.s/m", "N/m", "N.s/m", "N/m", "mm", "mm"] # " ", " ", " "]
         self.params_unormed = []
-        self.params_normed = [0.5, 0.5, 0.8,   0.8,   0.5,  0.8,   0.8,   0.5,  0.1,   0.1,  0.1,   0.1] #  1, 0.01, 0.1]
-        self.params_min =    [0.1, 0.1, 0.1,   0.1,   0.01, 0.1,   0.1,   0.01, 0.001, 0.01, 0.001, 0.01] # 0.1, 0.001, 0.01]
-        self.params_max =    [0.5, 0.5, 20000, 20000, 0.1,  20000, 20000, 0.1,  0.5,   50,   0.5,   50] # 100, 0.1,  10]
+        self.params_normed = [0.5, 0.5, 0.8, 0.8, 0.5,    0.8, 0.8, 0.5,    0.1,   0.5,  0.1,   0.5, 0.5, 0.5]
+        self.params_min =    [0.1, 0.1, 0.1, 0.1, 0.0001, 0.1, 0.1, 0.0001, 0.01,  5,    0.01,  5,   0.7, 0.7] 
+        self.params_max =    [0.5, 0.5, 10,  10,  0.01,   10,  10,  0.01,   0.1,   30,   0.1,   30,  1.2, 1.2]
 
         self.sim_time = 0
         self.sim_timeout = 60
-        self.start_time = 20
-        self.stop_time = 45
+        self.start_time = 10
+        self.stop_time = 66
         self.pool_number = 1
         self.max_iter = 5000
         self.init_var = 0.4
         self.min = 0
         self.max = 1
         self.pop_size = 0
-        self.score_method = "av_period"
+        self.score_method = "nrmse"
 
         self.it = 0
         self.pool = 0
@@ -454,6 +454,10 @@ class Optimization(Score):
         self.f_fr_act = interp1d(self.t_act, self.fr_act, assume_sorted=False, fill_value="extrapolate")
         self.f_bl_act = interp1d(self.t_act, self.bl_act, assume_sorted=False, fill_value="extrapolate")
         self.f_br_act = interp1d(self.t_act, self.br_act, assume_sorted=False, fill_value="extrapolate")
+
+        plt.plot(np.array([d["FL"] for d in self.sens_rob_sig]))
+        plt.savefig("a.png", format='png', dpi=300)
+        plt.close()
 
         return
 
