@@ -36,9 +36,9 @@ class Score(object):
 
     def __init__(self):
 
-        self.start_eval_time = 21 # 10
-        self.stop_eval_time = 44 # 47
-        self.eval_points = 1500
+        self.start_eval_time = 10 # 10
+        self.stop_eval_time = 30 # 47
+        self.eval_points = 1000
 
         self.t_new = None
         self.zeros = None
@@ -151,10 +151,10 @@ class Score(object):
         # Average all periods and remove bias to center around 0
         fl_rob_mean, fl_sim_mean = utils.center_norm_2(np.mean(self.fl_rob_new, axis=1), np.mean(self.fl_sim_new, axis=1))
         fr_rob_mean, fr_sim_mean = utils.center_norm_2(np.mean(self.fr_rob_new, axis=1), np.mean(self.fr_sim_new, axis=1))
-        bl_rob_mean, bl_sim_mean = utils.center_norm_2(np.mean(self.bl_rob_new, axis=1), np.mean(self.bl_sim_new, axis=1))
-        br_rob_mean, br_sim_mean = utils.center_norm_2(np.mean(self.br_rob_new, axis=1), np.mean(self.br_sim_new, axis=1))
-        rob_new = np.vstack((fl_rob_mean, fr_rob_mean, bl_rob_mean, br_rob_mean))
-        sim_new = np.vstack((fl_sim_mean, fr_sim_mean, bl_sim_mean, br_sim_mean))
+        # bl_rob_mean, bl_sim_mean = utils.center_norm_2(np.mean(self.bl_rob_new, axis=1), np.mean(self.bl_sim_new, axis=1))
+        # br_rob_mean, br_sim_mean = utils.center_norm_2(np.mean(self.br_rob_new, axis=1), np.mean(self.br_sim_new, axis=1))
+        rob_new = np.vstack((fl_rob_mean, fr_rob_mean))
+        sim_new = np.vstack((fl_sim_mean, fr_sim_mean))
 
         # Compute score
         if metric == "nrmse":
@@ -212,13 +212,30 @@ class Score(object):
 
     def score_nrmse(self):
         
-        self.eval_points = 1500
+        self.eval_points = 1000
         self.interpolate()
         # self.plot_sensors()
 
-        rob_new = np.vstack((self.fl_rob_new, self.fr_rob_new, self.bl_rob_new, self.br_rob_new))
-        sim_new = np.vstack((self.fl_sim_new, self.fr_sim_new, self.bl_sim_new, self.br_sim_new))
+        rob_new = np.vstack((self.fl_rob_new, self.fr_rob_new))
+        sim_new = np.vstack((self.fl_sim_new, self.fr_sim_new))
         score = utils.nrmse(rob_new, sim_new)
+
+
+        # Penalize fall and explosion
+        x_angle = np.array([i["ori_x"]/i["ori_w"] for i in self.imu_sim_sig])
+        if True in (x_angle < -0.6):
+            sys.stdout.write("[Fall     ]\t")
+            if math.isnan(score):
+                score = 1
+            else:
+                score += 0.5
+        else:
+            if ((x_angle == 0.0).sum() / float(x_angle.size)) > 0.1:
+                sys.stdout.write("[Explosion]\t")
+                score = 1
+            else:
+                sys.stdout.write("[Success  ]\t")
+
         return score
 
     def interpolate(self):
@@ -370,7 +387,7 @@ class Optimization(Score):
         # Optimization metaparameter
         self.params_names = ["Front Mass", "Back Mass", "Front Friction mu1", "Front Friction mu2", "Front Friction Contact Depth",
                              "Back Friction mu1", "Back Friction mu2", "Back Friction Contact Depth", "Front Damping",
-                             "Front Stiffness", "Back Damping", "Back Stiffness", "Front Compression Tolerance", "Back Compression Tolerance",]
+                             "Front Stiffness", "Back Damping", "Back Stiffness", "Front Compression Tolerance", "Back Compression Tolerance"]
         self.params_units = ["kg", "kg", " ", " ", "mm", " ", " ", "mm", "N.s/m", "N/m", "N.s/m", "N/m", "mm", "mm"] # " ", " ", " "]
         self.params_unormed = []
         self.params_normed = [0.5, 0.5, 0.8, 0.8, 0.5,    0.8, 0.8, 0.5,    0.1,   0.5,  0.1,   0.5, 0.5, 0.5]
@@ -378,16 +395,16 @@ class Optimization(Score):
         self.params_max =    [0.5, 0.5, 10,  10,  0.01,   10,  10,  0.01,   0.1,   30,   0.1,   30,  1.2, 1.2]
 
         self.sim_time = 0
-        self.sim_timeout = 60
-        self.start_time = 10
-        self.stop_time = 66
+        self.sim_timeout = 100
+        self.start_time = 5
+        self.stop_time = 32
         self.pool_number = 1
         self.max_iter = 5000
         self.init_var = 0.4
         self.min = 0
         self.max = 1
         self.pop_size = 0
-        self.score_method = "nrmse"
+        self.score_method = "av_period"
 
         self.it = 0
         self.pool = 0
@@ -488,9 +505,11 @@ class Optimization(Score):
         self.conf["legs"]["BL"]["spring_stiffness"] = self.params_unormed[11]
         self.conf["legs"]["BR"]["knee_damping"] = self.params_unormed[10]
         self.conf["legs"]["BR"]["spring_stiffness"] = self.params_unormed[11]
-        # self.conf["p"] = self.params_unormed[12]
-        # self.conf["i"] = self.params_unormed[13]
-        # self.conf["d"] = self.params_unormed[14]
+
+        self.conf["legs"]["FL"]["spring_comp_tol"] = self.params_unormed[12]
+        self.conf["legs"]["FR"]["spring_comp_tol"] = self.params_unormed[12]
+        self.conf["legs"]["BL"]["spring_comp_tol"] = self.params_unormed[13]
+        self.conf["legs"]["BR"]["spring_comp_tol"] = self.params_unormed[13]
 
         fg = model.SDFileGenerator(self.conf, self.model_file, model_scale=1, gazebo=True)
         fg.generate()
@@ -578,9 +597,11 @@ class Optimization(Score):
             score = np.nan
         else:
             score = self.get_score()
+        t_score_stop = time.time()
         sys.stdout.write("Score = {0:.4f}".format(score))
         sys.stdout.write("\t(st: " + str(self.stop_time - self.start_time) + \
-                         "s, rt: {0:.2f}s)\n".format(self.t_it_stop - t_it_init))
+                         "s, rt: {0:.2f}s ".format(self.t_it_stop - t_it_init) + \
+                         "s, score: {0:.2f}s)\n".format(t_score_stop - self.t_it_stop)) 
 
         return score
 
