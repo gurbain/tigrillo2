@@ -123,6 +123,7 @@ class Score(object):
     def score_av_period(self, metric="nrmse"):
 
         self.interpolate()
+
         self.zeros = utils.zero_crossing(self.fl_act_new, self.t_new)
         c = len(self.zeros)
         r = int(len(self.t_new)/c)
@@ -169,7 +170,7 @@ class Score(object):
 
         # Penalize fall and explosion
         x_angle = np.array([i["ori_x"]/i["ori_w"] for i in self.imu_sim_sig])
-        if True in (x_angle < -0.4):
+        if True in (x_angle < -0.5):
             sys.stdout.write("[Fall     ]\t")
             if math.isnan(score):
                 score = 1
@@ -240,10 +241,11 @@ class Score(object):
 
     def interpolate(self):
 
+
+        t1 = time.time()
         # Remove items taken at the same timestep
         sens_sim = utils.filter_duplicate(self.sens_sim_sig)
         sens_rob = utils.filter_duplicate(self.sens_rob_sig)
-        act = utils.filter_duplicate(self.act_sig)
 
         # Get all data in a numpy array and interpolate functions
         t_sim = np.array([d["time"] for d in sens_sim])
