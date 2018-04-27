@@ -42,7 +42,7 @@ void setup() {
 void loop() {
 
 	// Nothing to do in the main loop
-	delay(10);
+	delay(5);
 
 }
 
