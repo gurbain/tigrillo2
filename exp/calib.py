@@ -79,21 +79,29 @@ class Score(object):
         self.zeros = None
         self.fl_rob_new = None
         self.fl_sim_new = None
+        self.fl_mot_new = None
         self.fr_rob_new = None
         self.fr_sim_new = None
+        self.fr_mot_new = None
         self.bl_rob_new = None
         self.bl_sim_new = None
+        self.bl_mot_new = None
         self.br_rob_new = None
         self.br_sim_new = None
+        self.br_mot_new = None
         self.fl_act_new = None
         self.f_fl_sim = None
         self.f_fl_rob = None
+        self.f_fl_mot = None
         self.f_fr_sim = None
         self.f_fr_rob = None
+        self.f_fr_mot = None
         self.f_bl_sim = None
         self.f_bl_rob = None
+        self.f_bl_mot = None
         self.f_br_sim = None
         self.f_br_rob = None
+        self.f_br_mot = None
         self.freq_fl_s = None
         self.t_fl_s = None
         self.s_fl = None
@@ -123,6 +131,7 @@ class Score(object):
     def score_av_period(self, metric="nrmse"):
 
         self.interpolate()
+        self.plot_sensors()
 
         self.zeros = utils.zero_crossing(self.fl_act_new, self.t_new)
         c = len(self.zeros)
@@ -156,6 +165,7 @@ class Score(object):
         # br_rob_mean, br_sim_mean = utils.center_norm_2(np.mean(self.br_rob_new, axis=1), np.mean(self.br_sim_new, axis=1))
         rob_new = np.vstack((fl_rob_mean, fr_rob_mean))
         sim_new = np.vstack((fl_sim_mean, fr_sim_mean))
+        self.plot_av_period_after()
 
         # Compute score
         if metric == "nrmse":
@@ -244,40 +254,55 @@ class Score(object):
 
         t1 = time.time()
         # Remove items taken at the same timestep
-        sens_sim = utils.filter_duplicate(self.sens_sim_sig)
-        sens_rob = utils.filter_duplicate(self.sens_rob_sig)
+        sens_sim = np.unique(self.sens_sim_sig)
+        sens_rob = np.unique(self.sens_rob_sig)
+        mot_sim = np.unique(self.mot_sim_sig)
 
         # Get all data in a numpy array and interpolate functions
         t_sim = np.array([d["time"] for d in sens_sim])
         t_rob = np.array([d["time"] for d in sens_rob])
+        t_mot = np.array([d["time"] for d in mot_sim])
         fl_sim = np.array([d["FL"] for d in sens_sim])
         fl_rob = np.array([d["FL"] for d in sens_rob])
+        fl_mot = np.array([d["FL"] for d in mot_sim])
         fr_sim = np.array([d["FR"] for d in sens_sim])
         fr_rob = np.array([d["FR"] for d in sens_rob])
+        fr_mot = np.array([d["FR"] for d in mot_sim])
         bl_sim = np.array([d["BL"] for d in sens_sim])
         bl_rob = np.array([d["BL"] for d in sens_rob])
+        bl_mot = np.array([d["BL"] for d in mot_sim])
         br_sim = np.array([d["BR"] for d in sens_sim])
-        br_rob = np.array([d["BR"] for d in sens_rob])
+        br_rob = np.array([d["BL"] for d in sens_rob])
+        br_mot = np.array([d["BL"] for d in mot_sim])
 
         self.f_fl_sim = interp1d(t_sim, fl_sim, kind='cubic', assume_sorted=False)
         self.f_fl_rob = interp1d(t_rob, fl_rob, kind='cubic', assume_sorted=False)
+        self.f_fl_mot = interp1d(t_mot, fl_mot, kind='cubic', assume_sorted=False)
         self.f_fr_sim = interp1d(t_sim, fr_sim, kind='cubic', assume_sorted=False)
         self.f_fr_rob = interp1d(t_rob, fr_rob, kind='cubic', assume_sorted=False)
+        self.f_fr_mot = interp1d(t_mot, fr_mot, kind='cubic', assume_sorted=False)
         self.f_bl_sim = interp1d(t_sim, bl_sim, kind='cubic', assume_sorted=False)
         self.f_bl_rob = interp1d(t_rob, bl_rob, kind='cubic', assume_sorted=False)
+        self.f_bl_mot = interp1d(t_mot, bl_mot, kind='cubic', assume_sorted=False)
         self.f_br_sim = interp1d(t_sim, br_sim, kind='cubic', assume_sorted=False)
         self.f_br_rob = interp1d(t_rob, br_rob, kind='cubic', assume_sorted=False)
+        self.f_br_mot = interp1d(t_mot, br_mot, kind='cubic', assume_sorted=False)
 
         # Create new time axis and interpolate
         self.t_new = np.linspace(self.start_eval_time, self.stop_eval_time, self.eval_points)
         self.fl_rob_new = self.f_fl_rob(self.t_new)
         self.fl_sim_new = self.f_fl_sim(self.t_new)
+        self.fl_mot_new = self.f_fl_mot(self.t_new)
         self.fr_rob_new = self.f_fr_rob(self.t_new)
         self.fr_sim_new = self.f_fr_sim(self.t_new)
+        self.fr_mot_new = self.f_fr_mot(self.t_new)
         self.bl_rob_new = self.f_bl_rob(self.t_new)
         self.bl_sim_new = self.f_bl_sim(self.t_new)
+        self.bl_mot_new = self.f_bl_mot(self.t_new)
         self.br_rob_new = self.f_br_rob(self.t_new)
         self.br_sim_new = self.f_br_sim(self.t_new)
+        self.br_mot_new = self.f_br_mot(self.t_new)
+
         self.fl_act_new = self.f_fl_act(self.t_new)
 
     def plot_sensors(self):
@@ -297,6 +322,12 @@ class Score(object):
         plt.plot(self.t_new, self.br_rob_new, linewidth=1, label="Back Right Robot")
         plt.plot(self.t_new, self.br_sim_new, linewidth=1, label="Back Right Simulation")
         plt.savefig(self.save_folder + "back_right_" + str(self.it) + ".png", format='png', dpi=300)
+        plt.close()
+
+    def plot_motors(self):
+
+        plt.plot(self.t_new, self.fl_mot_new, linewidth=1)
+        plt.savefig(self.save_folder + "front_left_" + str(self.it) + ".png", format='png', dpi=300)
         plt.close()
 
     def plot_specto(self):
@@ -384,6 +415,7 @@ class Optimization(Score):
         self.sens_rob_sig = []
         self.imu_sim_sig = []
         self.imu_rob_sig = []
+        self.mot_sim_sig = []
         self.norm_params = []
 
         # Optimization metaparameter
@@ -474,9 +506,6 @@ class Optimization(Score):
         self.f_bl_act = interp1d(self.t_act, self.bl_act, assume_sorted=False, fill_value="extrapolate")
         self.f_br_act = interp1d(self.t_act, self.br_act, assume_sorted=False, fill_value="extrapolate")
 
-        plt.plot(np.array([d["FL"] for d in self.sens_rob_sig]))
-        plt.savefig("a.png", format='png', dpi=300)
-        plt.close()
 
         return
 
@@ -485,33 +514,33 @@ class Optimization(Score):
         # Create config
         self.params_unormed = utils.unorm(self.params_normed, self.params_min, self.params_max)
         self.conf = model.model_config
-        self.conf["body"]["front"]["mass"] = self.params_unormed[0]
-        self.conf["body"]["hind"]["mass"] = self.params_unormed[1]
-        self.conf["legs"]["FL"]["foot"]["mu1"] = self.params_unormed[2]
-        self.conf["legs"]["FL"]["foot"]["mu2"] = self.params_unormed[3]
-        self.conf["legs"]["FL"]["foot"]["contact_depth"] = self.params_unormed[4]
-        self.conf["legs"]["FR"]["foot"]["mu1"] = self.params_unormed[2]
-        self.conf["legs"]["FR"]["foot"]["mu2"] = self.params_unormed[3]
-        self.conf["legs"]["FR"]["foot"]["contact_depth"] = self.params_unormed[4]
-        self.conf["legs"]["BL"]["foot"]["mu1"] = self.params_unormed[5]
-        self.conf["legs"]["BL"]["foot"]["mu2"] = self.params_unormed[6]
-        self.conf["legs"]["BL"]["foot"]["contact_depth"] = self.params_unormed[7]
-        self.conf["legs"]["BR"]["foot"]["mu1"] = self.params_unormed[5]
-        self.conf["legs"]["BR"]["foot"]["mu2"] = self.params_unormed[6]
-        self.conf["legs"]["BR"]["foot"]["contact_depth"] = self.params_unormed[7]
-        self.conf["legs"]["FL"]["knee_damping"] = self.params_unormed[8]
-        self.conf["legs"]["FL"]["spring_stiffness"] = self.params_unormed[9]
-        self.conf["legs"]["FR"]["knee_damping"] = self.params_unormed[8]
-        self.conf["legs"]["FR"]["spring_stiffness"] = self.params_unormed[9]
-        self.conf["legs"]["BL"]["knee_damping"] = self.params_unormed[10]
-        self.conf["legs"]["BL"]["spring_stiffness"] = self.params_unormed[11]
-        self.conf["legs"]["BR"]["knee_damping"] = self.params_unormed[10]
-        self.conf["legs"]["BR"]["spring_stiffness"] = self.params_unormed[11]
+        # self.conf["body"]["front"]["mass"] = self.params_unormed[0]
+        # self.conf["body"]["hind"]["mass"] = self.params_unormed[1]
+        # self.conf["legs"]["FL"]["foot"]["mu1"] = self.params_unormed[2]
+        # self.conf["legs"]["FL"]["foot"]["mu2"] = self.params_unormed[3]
+        # self.conf["legs"]["FL"]["foot"]["contact_depth"] = self.params_unormed[4]
+        # self.conf["legs"]["FR"]["foot"]["mu1"] = self.params_unormed[2]
+        # self.conf["legs"]["FR"]["foot"]["mu2"] = self.params_unormed[3]
+        # self.conf["legs"]["FR"]["foot"]["contact_depth"] = self.params_unormed[4]
+        # self.conf["legs"]["BL"]["foot"]["mu1"] = self.params_unormed[5]
+        # self.conf["legs"]["BL"]["foot"]["mu2"] = self.params_unormed[6]
+        # self.conf["legs"]["BL"]["foot"]["contact_depth"] = self.params_unormed[7]
+        # self.conf["legs"]["BR"]["foot"]["mu1"] = self.params_unormed[5]
+        # self.conf["legs"]["BR"]["foot"]["mu2"] = self.params_unormed[6]
+        # self.conf["legs"]["BR"]["foot"]["contact_depth"] = self.params_unormed[7]
+        # self.conf["legs"]["FL"]["knee_damping"] = self.params_unormed[8]
+        # self.conf["legs"]["FL"]["spring_stiffness"] = self.params_unormed[9]
+        # self.conf["legs"]["FR"]["knee_damping"] = self.params_unormed[8]
+        # self.conf["legs"]["FR"]["spring_stiffness"] = self.params_unormed[9]
+        # self.conf["legs"]["BL"]["knee_damping"] = self.params_unormed[10]
+        # self.conf["legs"]["BL"]["spring_stiffness"] = self.params_unormed[11]
+        # self.conf["legs"]["BR"]["knee_damping"] = self.params_unormed[10]
+        # self.conf["legs"]["BR"]["spring_stiffness"] = self.params_unormed[11]
 
-        self.conf["legs"]["FL"]["spring_comp_tol"] = self.params_unormed[12]
-        self.conf["legs"]["FR"]["spring_comp_tol"] = self.params_unormed[12]
-        self.conf["legs"]["BL"]["spring_comp_tol"] = self.params_unormed[13]
-        self.conf["legs"]["BR"]["spring_comp_tol"] = self.params_unormed[13]
+        # self.conf["legs"]["FL"]["spring_comp_tol"] = self.params_unormed[12]
+        # self.conf["legs"]["FR"]["spring_comp_tol"] = self.params_unormed[12]
+        # self.conf["legs"]["BL"]["spring_comp_tol"] = self.params_unormed[13]
+        # self.conf["legs"]["BR"]["spring_comp_tol"] = self.params_unormed[13]
 
         fg = model.SDFileGenerator(self.conf, self.model_file, model_scale=1, gazebo=True)
         fg.generate()
@@ -542,6 +571,7 @@ class Optimization(Score):
         # Perform simulation loop
         t = self.start_time
         i = 0
+        t_prev = 0
         t_init = time.time()
         while t < self.stop_time:
 
@@ -552,6 +582,8 @@ class Optimization(Score):
 
             # Get sim time
             t = p.get_gazebo_time() + self.start_time
+            if t == t_prev:
+                continue
 
             # Actuate
             command = self.act(t)
@@ -563,9 +595,10 @@ class Optimization(Score):
             s["time"] += self.start_time
             self.sens_sim_sig.append(s)
             self.imu_sim_sig.append(i)
+            self.mot_sim_sig.append({"FL": command[0], "FR": command[1], "BL": command[2], "BR": command[3], "time": t})
 
             # Wait here not to overload the sensor vector
-            time.sleep(0.005)
+            t_prev = t
 
         p.stop()
         return 0
@@ -574,6 +607,7 @@ class Optimization(Score):
 
         self.sens_sim_sig = []
         self.imu_sim_sig = []
+        self.mot_sim_sig = []
         self.conf = []
         self.norm_params = []
         super(Optimization, self).cleanup()
@@ -605,6 +639,7 @@ class Optimization(Score):
                          "s, rt: {0:.2f}s ".format(self.t_it_stop - t_it_init) + \
                          "s, score: {0:.2f}s)\n".format(t_score_stop - self.t_it_stop)) 
 
+        plt.close()
         return score
 
     def eval(self, parameters):
