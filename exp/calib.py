@@ -166,7 +166,7 @@ class Score(object):
         br_rob_mean, br_sim_mean = utils.center_norm_2(np.mean(self.br_rob_new, axis=1), np.mean(self.br_sim_new, axis=1))
         rob_new = np.vstack((fl_rob_mean, fr_rob_mean, bl_rob_mean, br_rob_mean))
         sim_new = np.vstack((fl_sim_mean, fr_sim_mean, bl_sim_mean, br_sim_mean))
-        self.plot_av_period_after()
+        #self.plot_av_period_after()
 
         # Compute score
         if metric == "nrmse":
