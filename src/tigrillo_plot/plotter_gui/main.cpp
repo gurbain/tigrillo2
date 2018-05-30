@@ -115,7 +115,7 @@ int main(int argc, char *argv[])
 
         for (int i =0; i<(25 + subtitle.size()/2) && !splash.isHidden(); i++ ) {
             app.processEvents();
-            QThread::msleep(100);
+            QThread::msleep(1);
             splash.raise();
         }
 
