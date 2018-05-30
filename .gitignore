@@ -4,9 +4,16 @@ build/*
 devel/*
 
 # Result files
-data/results/*
+data/optim_calib/*
+data/optim_gait/*
+data/optim_pid/*
 data/configs/trained_ann/*
-data/analysis/*
+data/robot/bags/*
+data/robot/logs/*
+data/robot/layouts/*
+
+# Draft files
+data/drafts/*
 
 # Python compiled files
 *.pyc
