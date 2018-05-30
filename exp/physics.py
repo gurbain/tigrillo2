@@ -11,9 +11,12 @@ import time
 
 from rosgraph_msgs.msg import Clock
 from gazebo_msgs.msg import ModelStates
+from std_msgs.msg import Float32MultiArray
 from std_srvs.srv import Empty
 from tigrillo_2_plugin.msg import Sensors, Motors
 from sensor_msgs.msg import Imu
+
+import utils
 
 __author__ = "Gabriel Urbain" 
 __copyright__ = "Copyright 2017, Human Brain Projet, SP10"
@@ -52,6 +55,7 @@ class Gazebo(threading.Thread):
         self.sensor_sub_name = '/tigrillo_rob/sim_sensors'
         self.motor_sub_name = '/tigrillo_rob/sim_motors'
         self.imu_sub_name = '/imu_data'
+        self.ori_pub_name = '/tigrillo_rob/orientation'
 
         self.sub_clock = None
         self.sub_state = None
@@ -75,6 +79,7 @@ class Gazebo(threading.Thread):
         self.motor_sub = ros.Subscriber(self.motor_sub_name, Motors, callback=self._reg_motors, queue_size=1)
         self.imu_sub = ros.Subscriber(self.imu_sub_name, Imu, callback=self._reg_imu, queue_size=1)
         self.pose_sub = ros.Subscriber(self.pose_sub_name, ModelStates, callback=self._reg_pose, queue_size=1)
+        # self.ori_pub = ros.Publisher(self.ori_pub_name, Float32MultiArray, queue_size=1)
         self.start_gazebo()
 
     def stop(self):
@@ -175,9 +180,13 @@ class Gazebo(threading.Thread):
 
     def _reg_imu(self, msg):
 
-        self.imu = {"ori_x": msg.orientation.x, "ori_y": msg.orientation.y,
-                    "ori_z": msg.orientation.z, "ori_w": msg.orientation.w}
+        x, y, z = utils.quaternion_to_euler_angle(msg.orientation.w, msg.orientation.x, 
+                                                  msg.orientation.y, msg.orientation.z)
 
+        self.imu = {"ori_x": x, "ori_y": y, "ori_z": z}
+
+        # self.ori_pub.publish(Float32MultiArray(data=[x, y, z]))
+    
     def _reg_pose(self, msg):
 
         index = -1

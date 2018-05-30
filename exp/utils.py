@@ -1,6 +1,19 @@
+import matplotlib
+matplotlib.use("Agg")
+from matplotlib.mlab import *
+import matplotlib.pyplot as plt
+plt.style.use('fivethirtyeight')
+plt.rc('text', usetex=True)
+plt.rc('font', family='serif')
+plt.rc('axes', facecolor='white')
+plt.rc('savefig', facecolor='white')
+plt.rc('figure', autolayout=True)
+
 import copy
+import math
 import numpy as np
 import os
+from os.path import expanduser
 import pickle
 import psutil
 from scipy.signal import butter, filtfilt
@@ -38,18 +51,48 @@ def timestamp():
     return time.strftime("%Y%m%d-%H%M%S", time.localtime())
 
 
+def var_name(var):
+    """ Return the name of a variable """
+    for name,value in globals().items() :
+        if value is var :
+            return name
+    return None 
+
+
+def plot(y, x=None, save_folder=None):
+    """ Simple tools to plot and save a figure quickly"""
+
+    if save_folder is None:
+        save_folder = expanduser("~") + "/"
+
+    name = var_name(y)
+
+    if name is None:
+        filename = timestamp()
+        label = "Unknown"
+    else:
+        filename = name + timestamp()
+        label = name
+
+    if x is not None:
+        plt.plot(x, y, linewidth=1, label=label)
+    else:
+        plt.plot(y, linewidth=1, label=label)
+    plt.savefig(save_folder + filename + ".png", format='png', dpi=300)
+    plt.close()
+
+
 def filter_duplicate(mylist):
 
-    newlist = []
-    for i in mylist:
-        if len(newlist) >= 1:
-            l = [d["time"] for d in newlist]
-            if i["time"] not in l:
-                newlist.append(i)
-        else:
-            newlist.append(i)
+    l = np.array(mylist)
+    old_t = [d["time"] for d in l]
+    t, i = np.unique(old_t, return_index=True)
+    fl = [d["FL"] for d in l[i]]
+    fr = [d["FR"] for d in l[i]]
+    bl = [d["BL"] for d in l[i]]
+    br = [d["BR"] for d in l[i]]
 
-    return newlist
+    return t, fl, fr, bl, br
 
 
 def mse(arr1, arr2):
@@ -173,7 +216,7 @@ def divide_periodic(f, x, y):
 
 def zero_crossing(sig, t):
 
-    b, a = butter(4, 0.03, analog=False)
+    b, a = butter(2, 0.03, analog=False)
     sig_filtered = filtfilt(b, a, sig)
 
     zeros = []
@@ -195,3 +238,21 @@ def zero_crossing(sig, t):
         i += 1
 
     return zeros
+
+def quaternion_to_euler_angle(w, x, y, z):
+    ysqr = y * y
+    
+    t0 = +2.0 * (w * x + y * z)
+    t1 = +1.0 - 2.0 * (x * x + ysqr)
+    X = math.degrees(math.atan2(t0, t1))
+    
+    t2 = +2.0 * (w * y - z * x)
+    t2 = +1.0 if t2 > +1.0 else t2
+    t2 = -1.0 if t2 < -1.0 else t2
+    Y = math.degrees(math.asin(t2))
+    
+    t3 = +2.0 * (w * z + x * y)
+    t4 = +1.0 - 2.0 * (ysqr + z * z)
+    Z = math.degrees(math.atan2(t3, t4))
+    
+    return X, Y, Z

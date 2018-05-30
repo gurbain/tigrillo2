@@ -37,7 +37,7 @@ plt.rc('ytick', color='white')
 # plt.rc('savefig', facecolor='white')
 # plt.rc('figure', autolayout=True)
 
-RESULT_FOLDER = '/home/gabs48/src/quadruped/tigrillo2/data/analysis/results'
+RESULT_FOLDER = '/home/gabs48/src/quadruped/tigrillo2/data/optim_calib/results'
 
 
 class SimpleSimulation(object):

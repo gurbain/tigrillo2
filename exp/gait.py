@@ -49,7 +49,25 @@ class Score(object):
 
     def score_dist(self):
 
-        return  -math.sqrt(self.pose[-1]["x"]** 2 + self.pose[-1]["y"] ** 2)
+        score = math.sqrt(self.pose[-1]["x"]** 2 + self.pose[-1]["y"] ** 2)
+
+        # Penalize fall and explosion
+        x = np.array([i["ori_x"] for i in self.imu_sig])
+        # y = np.array([i["ori_x"] for i in self.imu_sig])
+        # if (True in (x < -60)) or (True in (x > 60)) or (True in (y < -60)) or (True in (y > 60)):
+        #     sys.stdout.write("[Fall     ]\t")
+        #     if math.isnan(score):
+        #         score = -100
+        #     else:
+        #         score -= 50
+        # else:
+        if ((x == 0.0).sum() / float(x.size)) > 0.1:
+            sys.stdout.write("[Explosion]\t")
+            score = -100
+        else:
+            sys.stdout.write("[Success  ]\t")
+
+        return -score
 
 
 class Optimization(Score):
@@ -74,16 +92,16 @@ class Optimization(Score):
         # Optimization metaparameter
         self.params_names   = ["Mu Back", "Mu Front", "Duty Factor Back", "Duty Factor Front", "Phase Offset Back", 
                                "Phase Offset Front", " Offset Back", "Offset Front"] # , "Omega"]
-        self.params_units   = ["Degrees", "Degrees", "Ratio", "Ratio", "Radians", "Radians", "Degrees", "Degrees"] #, "Radians/s"]
+        self.params_units   = ["Decidegrees", "Decidegrees", "Ratio", "Ratio", "Radians", "Radians", "Degrees", "Degrees"] #, "Radians/s"]
         self.params_unormed = []
         self.params_normed  = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5] #, 0.5]
         self.params_min     = [0, 0, 0, 0, 0, 0, -60, -60] # , 0]
-        self.params_max     = [100, 100, 1, 1, math.pi, math.pi, 60, 60] # , 4 * math.pi]
+        self.params_max     = [2000, 2000, 1, 1, math.pi, math.pi, 60, 60] # , 4 * math.pi]
 
         self.sim_time = 0
-        self.stop_time = 10
-        self.sim_timeout = 20
-        self.pool_number = 2
+        self.stop_time = 15
+        self.sim_timeout = 30
+        self.pool_number = 4
         self.max_iter = 2000
         self.init_var = 0.2
         self.min = 0
@@ -94,6 +112,7 @@ class Optimization(Score):
         self.pool = 0
         self.it = 0
         self.score = 0
+        self.score_var = 0
         self.t_init = None
         self.t_it_stop = None
 
@@ -122,7 +141,7 @@ class Optimization(Score):
         omega  = 2 * math.pi #self.params_unormed[8]
         coupling = "[5,5,5,0]"
         params = "["
-
+        
         for front in range(2):
             params += "{'mu': " + str(mu_f) + ","
             params += "'o': " + str(o_f) + ","
@@ -153,7 +172,7 @@ class Optimization(Score):
     def sim(self):
 
         # Create the simulation handle
-        p = physics.Gazebo()
+        p = physics.Gazebo(view=False)
         p.start()
 
         # Wait for the gzserver process to be started
@@ -178,7 +197,6 @@ class Optimization(Score):
 
             # Get sim time
             t = p.get_gazebo_time()
-
             # Check that the gazebo timestep is larger than the CPG integration timestep
             if t - prev_t > self.cpg.dt:
 
@@ -188,8 +206,9 @@ class Optimization(Score):
                 
                 # Record simulation sensor signal
                 self.sens_sig.append(p.get_sensors().copy())
-                self.imu_sig.append(p.get_imu().copy())
                 self.pose.append(p.get_pose().copy())
+                if t > 5:
+                    self.imu_sig.append(p.get_imu().copy())
 
             # Wait here not to overload the sensor vector
             time.sleep(0.001)
@@ -239,6 +258,7 @@ class Optimization(Score):
 
         # Manage multiple pooled simulation to average
         if self.pool_number > 1:
+            t_i = time.time()
             score_arr = []
             for n in range(self.pool_number):
                 sys.stdout.write("Pool " + str(self.pool+1) + " | ")
@@ -246,7 +266,11 @@ class Optimization(Score):
             
             self.pool = 0
             self.score = np.nanmean(np.array(score_arr))
-            print("Iteration average score = {0:.4f}\n".format(self.score))
+            self.score_var = np.nanvar(np.array(score_arr))
+            print("Iteration average score = {0:.4f}\t".format(self.score) + \
+                  "(variance = {0:.4f}".format(self.score_var) + \
+                  " and total time = {0:.2f}s)\n".format(time.time() - t_i))
+
         else:
             self.score = self.pool_eval(parameters)
         
@@ -259,8 +283,8 @@ class Optimization(Score):
 
     def save(self):
 
-        to_save = {"iter": self.it, "score": self.score, "params": self.params_normed, "cpg_conf": self.cpg_conf, \
-                   "model_conf": self.model_conf, "elapsed time": self.t_it_stop - self.t_init}
+        to_save = {"iter": self.it, "score": self.score, "score_var": self.score_var, "params": self.params_normed, \
+                   "cpg_conf": self.cpg_conf, "model_conf": self.model_conf, "elapsed time": self.t_it_stop - self.t_init}
         if self.it == 0:
             to_save["file_script"] = open(os.path.basename(__file__), 'r').read()
             to_save["sim_file"] = self.sim_file

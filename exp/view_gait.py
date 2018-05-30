@@ -49,70 +49,107 @@ class SimpleSimulation(object):
         ros.on_shutdown(utils.cleanup)
 
         # Simulation data retrieved from file
-        data = self.win.sel_conf[sim_id]
+        data = self.win.sel_conf[self.sim_id]
         data_init = self.win.sel_conf[0]
-        self.params_unormed = utils.unorm(data["params"], data_init["params_min"], data_init["params_max"])
-        self.cpg_conf = data_init["cpg_conf"]
+        self.model(data, data_init)
         self.file = "/home/gabs48/.gazebo/models/tigrillo/model.sdf"
-        self.sim_time = data_init["stop_time"]
+        self.stop_time = data_init["stop_time"]
         self.sim_timeout = data_init["sim_timeout"]
         self.score = data["score"]
+
+    def model(self, data, data_init):
+
+        # We set the controller here
+        print data["params"]
+        self.params_unormed = utils.unorm(data["params"], data_init["params_min"], data_init["params_max"])
+        self.cpg_conf = control.cpg_config
+        mu_b   = self.params_unormed[0]
+        mu_f   = self.params_unormed[1]
+        duty_b = self.params_unormed[2]
+        duty_f = self.params_unormed[3]
+        off_b  = self.params_unormed[4]
+        off_f  = self.params_unormed[5]
+        o_b  = self.params_unormed[6]
+        o_f  = self.params_unormed[7]
+        omega  = 2 * math.pi #self.params_unormed[8]
+        coupling = "[5,5,5,0]"
+        params = "["
+        
+        for front in range(2):
+            params += "{'mu': " + str(mu_f) + ","
+            params += "'o': " + str(o_f) + ","
+            params += "'duty_factor': " + str(duty_f) + ","
+            params += "'phase_offset': " + str(off_f) + ","
+            params += "'omega': " + str(omega) + ","
+            params += "'coupling': " + str(coupling) + "}, "
+        for back in range(2):
+            params += "{'mu': " + str(mu_b) + ","
+            params += "'o': " + str(o_b) + ","
+            params += "'duty_factor': " + str(duty_b) + ","
+            params += "'phase_offset': " + str(off_b) + ","
+            params += "'omega': " + str(omega) + ","
+            params += "'coupling': " + str(coupling) + "}, "
+
+        params += "]"
+        self.cpg_conf["Controller"]["params"] = params
 
     def simulate(self):
 
         # Create the model
         self.cpg = control.CPG(self.cpg_conf)
         self.pose = []
+        self.imu_sig = []
+        self.sens_sig = []
 
-        # Create the simulator
-        self.physics.start()
+        # Create the simulation handle
+        p = physics.Gazebo(view=True)
+        p.start()
 
-        # Wait for the simulator to be started
+        # Wait for the gzserver process to be started
         t_init = time.time()
-        while not self.physics.is_sim_started():
+        while not p.is_sim_started():
             time.sleep(0.001)
             if (time.time() - t_init) > self.sim_timeout:
-                self.physics.stop()
+                p.stop()
                 return -1
 
-        # Init simulation loop parameters 
-        rt_init = datetime.datetime.now()
-        t_init = time.time()
-        st = 0
-        prev_st = -1
+        # Perform simulation loop
         i = 0
+        t = 0
+        t_init = time.time()
+        prev_t = -1
+        while t < self.stop_time:
 
-        # Run simulation loop
-        while st < self.sim_time: 
-        
             # Timeout if failure
             if (time.time() - t_init) > self.sim_timeout:
                 p.stop()
                 return -1
 
-            # Get time
-            st = self.physics.get_gazebo_time()
-            rt = rt_init + datetime.timedelta(seconds=((i+1) * self.time_step))
-
-            # If the time delta is sufficient
-            if st - prev_st > self.cpg.dt:
+            # Get sim time
+            t = p.get_gazebo_time()
+            # Check that the gazebo timestep is larger than the CPG integration timestep
+            if t - prev_t > self.cpg.dt:
 
                 # Actuate
-                self.physics.actuate(self.getActuator(st))
-                self.pose.append(self.physics.get_pose().copy())
+                command = self.act(t)
+                p.actuate(command)
                 
-            # Pause
-            pause.until(rt)
-            prev_st = st
-            i += 1
+                # Record simulation sensor signal
+                self.sens_sig.append(p.get_sensors().copy())
+                self.pose.append(p.get_pose().copy())
+                if t > 5:
+                    self.imu_sig.append(p.get_imu().copy())
 
-        # Stop the simulator
-        self.physics.stop()
+            # Wait here not to overload the sensor vector
+            time.sleep(0.001)
+            prev_t = t
+
+        p.stop()
         print("Simulation score = {0:.4f}".format(self.getScore()) + 
               " and Optim score = {0:.4f}".format(self.score))
         return 0
 
-    def getActuator(self, st):
+    def act(self, st):
 
         a = self.cpg.step(st)
         if a:
@@ -260,8 +297,8 @@ class VizWin(QtWidgets.QGridLayout):
         self.addWidget(self.plot)
 
         self.plot.axes.cla()
-        self.plot.axes.plot(x, y_max, linestyle="-", color=self.getStyleColors()[1], linewidth=1, label="Generation Maximum")
-        self.plot.axes.plot(x, y_av, linestyle="-", color=self.getStyleColors()[3], linewidth=1, label="Generation Average")
+        #self.plot.axes.plot(x, y_max, linestyle="-", color=self.getStyleColors()[1], linewidth=1, label="Generation Maximum")
+        #self.plot.axes.plot(x, y_av, linestyle="-", color=self.getStyleColors()[3], linewidth=1, label="Generation Average")
         self.plot.axes.plot(x, y_min, linestyle="-", color=self.getStyleColors()[0], linewidth=1, label="Generation Minimum")
         self.plot.axes.set_title("Training score of CMA-ES algorithm with popSize = " + str(pop_size), fontsize=14)
         self.plot.axes.set_ylabel('Sensor Error')
@@ -311,11 +348,14 @@ class VizWin(QtWidgets.QGridLayout):
 
     def simulate(self, current=True):
 
+
         if current:
             sim_id = self.win.sel_ite
         else:
             scores = [self.win.sel_conf[i]["score"] for i in range(len(self.win.sel_conf))]
             sim_id = scores.index(min(scores))
+
+        print sim_id
         s = SimpleSimulation(win=self.win, sim_id=sim_id, time_step=0.02)
         s.simulate()
         del s

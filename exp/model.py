@@ -23,9 +23,9 @@ __date__ = "January 25th, 2018"
 
 # MODEL PARAMETERS
 model_config = {
-    'p': 1000.0,
-    'i': 0,
-    'd': 0,
+    'p': 50.0,
+    'i': 0.01,
+    'd': 0.01,
     'default_height': 0.17,
     'default_density': 100000,
     'body': {
@@ -60,9 +60,9 @@ model_config = {
             },
             'foot': {
                 'radius': 0.006,
-                'mu1': 1,
-                'mu2': 1,
-                'contact_depth': 0.005,
+                'mu1': 15000,
+                'mu2': 15000,
+                'contact_depth': 0.0005,
             },
             'radius': 0.004,
             'joint_slack': 0.0005,
@@ -74,9 +74,9 @@ model_config = {
             'femur_spring_tibia_joint_dst': 0.045,
             'tibia_spring_to_joint_dst': 0.035,
             'hip_damping': 0.05,
-            'knee_damping': 0.1,
-            'spring_stiffness': 2,
-            'spring_comp_tol': 1.11,
+            'knee_damping': 0.01,
+            'spring_stiffness': 6,
+            'spring_comp_tol': 0.86,
             'actuator_kp': 254,
         },
         'FR': {
@@ -89,9 +89,9 @@ model_config = {
             },
             'foot': {
                 'radius': 0.006,
-                'mu1': 1,
-                'mu2': 1,
-                'contact_depth': 0.005,
+                'mu1': 15000,
+                'mu2': 15000,
+                'contact_depth': 0.0005,
             },
             'radius': 0.004,
             'joint_slack': 0.0005,
@@ -103,9 +103,9 @@ model_config = {
             'femur_spring_tibia_joint_dst': 0.045,
             'tibia_spring_to_joint_dst': 0.035,
             'hip_damping': 0.05,
-            'knee_damping': 0.1,
-            'spring_stiffness': 2,
-            'spring_comp_tol': 1.15,
+            'knee_damping': 0.01,
+            'spring_stiffness': 12,
+            'spring_comp_tol': 0.985,
             'actuator_kp': 254,
         },
         'BL': {
@@ -118,9 +118,9 @@ model_config = {
             },
             'foot': {
                 'radius': 0.006,
-                'mu1': 1,
-                'mu2': 1,
-                'contact_depth': 0.005,
+                'mu1': 15000,
+                'mu2': 15000,
+                'contact_depth': 0.0005,
             },
             'radius': 0.004,
             'joint_slack': 0.0005,
@@ -132,9 +132,9 @@ model_config = {
             'femur_spring_tibia_joint_dst': 0.045,
             'tibia_spring_to_joint_dst': 0.035,
             'hip_damping': 0.05,
-            'knee_damping': 0.1,
-            'spring_stiffness': 10,
-            'spring_comp_tol': 0.873,
+            'knee_damping': 0.08,
+            'spring_stiffness': 10.1,
+            'spring_comp_tol': 0.863,
             'actuator_kp': 254,
         },
         'BR': {
@@ -147,9 +147,9 @@ model_config = {
             },
             'foot': {
                 'radius': 0.006,
-                'mu1': 1,
-                'mu2': 1,
-                'contact_depth': 0.005,
+                'mu1': 15000,
+                'mu2': 15000,
+                'contact_depth': 0.0005,
             },
             'radius': 0.004,
             'joint_slack': 0.0005,
@@ -161,9 +161,9 @@ model_config = {
             'femur_spring_tibia_joint_dst': 0.045,
             'tibia_spring_to_joint_dst': 0.035,
             'hip_damping': 0.05,
-            'knee_damping': 0.1,
-            'spring_stiffness': 10,
-            'spring_comp_tol': 0.785,
+            'knee_damping': 0.12,
+            'spring_stiffness': 11.1,
+            'spring_comp_tol': 0.94,
             'actuator_kp': 254,
         },
     },
@@ -288,13 +288,6 @@ class SDFileGenerator(object):
             izz.text = str(ih)
 
             mat_uri.text = "file://media/materials/scripts/gazebo.material"
-            if not self.mesh:
-                if part == "middle":
-                    mat_name.text = "Gazebo/Blue"
-                else:
-                    mat_name.text = "Gazebo/Red"
-            else:
-                 mat_name.text = "Gazebo/Black"
             uri.text = "model://tigrillo/meshes/" + part + ".dae"
             
             if part == "middle":
@@ -303,6 +296,7 @@ class SDFileGenerator(object):
                                 " 0 0 " + str(-math.pi/2)
                 scale.text = str(1.0 / (1000 * self.model_scale)) + " " + str(1.0 / (1000 * self.model_scale)) + \
                          " " + str(1.0 / (1000 * self.model_scale))
+                mat_name.text = "Gazebo/FlatBlack"
 
             elif part == "front":
                 pose_elem.text = "0 " + str(self.front_y) + " " + str(h / 2 + self.z_offset) + " 0 0 0"
@@ -310,6 +304,7 @@ class SDFileGenerator(object):
                                 " 0 0 " + str(-math.pi/2)
                 scale.text = str(1.0 / (1000 * self.model_scale)) + " " + str(1.0 / (1000 * self.model_scale)) + \
                          " " + str(1.0 / (1000 * self.model_scale))
+                mat_name.text = "Gazebo/Orange"
 
             else:
                 pose_elem.text = "0 " + str(self.back_y) + " " + str(h / 2 + self.z_offset) + " 0 0 0"
@@ -317,6 +312,7 @@ class SDFileGenerator(object):
                                 " 0 0 " + str(-math.pi/2)
                 scale.text = str(1.0 / (1000 * self.model_scale)) + " " + str(0.9 / (1000 * self.model_scale)) + \
                          " " + str(1.0 / (1000 * self.model_scale))
+                mat_name.text = "Gazebo/Orange"
 
             inertia.extend([ixx, ixy, ixz, iyy, iyz, izz])
             inertial.extend([mass, inertia])
@@ -400,7 +396,7 @@ class SDFileGenerator(object):
 
         mat_uri.text = "file://media/materials/scripts/gazebo.material"
         if self.mesh:
-            mat_name.text = "Gazebo/Black"
+            mat_name.text = "Gazebo/Orange"
             pose_vis.text = "0 0 0 " + str(-math.pi/2) + " 0 " + str((-1)**((leg_id+1) % 2) * math.pi/2)# + " 0"
             uri.text = "model://tigrillo/meshes/motor.dae"
             scale.text = str(1.0 / (1000 * self.model_scale)) + " " + str(1.0 / (1000 * self.model_scale)) + \
@@ -522,13 +518,13 @@ class SDFileGenerator(object):
 
         mat_uri.text = "file://media/materials/scripts/gazebo.material"
         if  self.mesh:
-            mat_name.text = "Gazebo/Black"
+            mat_name.text = "Gazebo/Turquoise"
             pose_vis.text = str(-0.004 / self.model_scale) + "0 0 0 0 " + str(math.pi/2) + " 0"
             uri.text = "model://tigrillo/meshes/femur.dae"
             scale.text = str(1.0 / (1000 * self.model_scale)) + " " + str(1.0 / (1000 * self.model_scale)) + \
                          " " + str(1.0 / (1000 * self.model_scale))
         else:
-            mat_name.text = "Gazebo/Blue"
+            mat_name.text = "Gazebo/Black"
 
         pose_vis_col_in.text = "0 0 " + str(-l / 2) + " 0 0 0"
         pose.text = str(x_1) + " " + str(y_1) + " " + str(z_1) + " " + str(a) + " 0 0"
@@ -669,7 +665,7 @@ class SDFileGenerator(object):
 
         tibia_mat_uri.text = "file://media/materials/scripts/gazebo.material"
         if self.mesh:
-            tibia_mat_name.text = "Gazebo/Black"
+            tibia_mat_name.text = "Gazebo/Turquoise"
             tibia_pose_vis.text = str(0.004 / self.model_scale) + " 0 " + str(-l + 1.2 * g) + str(-math.pi/2) + " 0 " + str(math.pi/2) #+ " 0" #str(0.004 / self.model_scale) + " 0 0 0 " + str(-math.pi/2) + " -1.5"# + str(math.pi/2)
             tibia_uri.text = "model://tigrillo/meshes/tibia.dae"
             tibia_scale.text = str(1.0 / (1000 * self.model_scale)) + " " + str(1.0 / (1000 * self.model_scale)) + \
