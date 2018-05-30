@@ -1,0 +1,54 @@
+#!/usr/bin/env python 
+import numpy as np
+from matplotlib import pyplot as plt
+import rospy
+from tigrillo_ctrl.msg import ANN_Stats
+from std_msgs.msg import Float32MultiArray
+
+plt.style.use('fivethirtyeight')
+plt.rc('figure', autolayout=True)
+
+
+def getStyleColors():
+
+        if 'axes.prop_cycle' in plt.rcParams:
+            cols = [p['color'] for p in plt.rcParams['axes.prop_cycle']]
+        else:
+            cols = ['b', 'r', 'y', 'g', 'k']
+        return cols
+
+def plot_hist(msg):
+    global counter
+
+
+
+    if counter % 10 == 0:
+        plt.clf()
+        x = msg.wout_x.data
+        y = msg.wout_y.data
+        x_min = msg.wout_min
+        x_mean = msg.wout_mean
+        x_max = msg.wout_max
+        for i in range (len(y)):
+            plt.bar(x[i], y[i], x[i+1]-x[i], color=getStyleColors()[0])
+
+        plt.xlabel("W_out distribution")
+        plt.plot([x_min, x_min], [0, 500], color=getStyleColors()[3])
+        plt.plot([x_mean, x_mean], [0, 500], color=getStyleColors()[2])
+        plt.plot([x_max, x_max], [0, 500], color=getStyleColors()[1])
+        plt.xlim((-50, 50))
+        plt.ylim((0, 500))
+
+        plt.pause(0.00000000001)
+
+
+    counter += 1
+
+if __name__ == '__main__':
+    counter = 0
+
+    rospy.init_node("plotter")
+    rospy.Subscriber("wout_stats", ANN_Stats, plot_hist)
+    plt.ion()
+    plt.show()
+    rospy.spin()

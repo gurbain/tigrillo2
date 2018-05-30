@@ -4,7 +4,7 @@ import rospy as ros
 import time
 from std_msgs.msg import String
 from std_srvs.srv import Trigger
-
+#from sensor_msgs.msg import Imu
 
 from tigrillo_ctrl.srv import Frequency, FrequencyResponse
 from tigrillo_ctrl.msg import Sensors, Motors, Imu
@@ -30,7 +30,8 @@ class CTRLROS():
         self.node_name = "tigrillo"
         self.uart_pub_name = "tigrillo_rob/uart_actuators"
         self.uart_sub_name = "tigrillo_rob/uart_sensors"
-        self.i2c_sub_name = "i2c_sensors"
+        self.sim_imu_name = "tigrillo_rob/sim_imu_sensors"
+        self.i2c_sub_name = "tigrillo_rob/i2c_sensors"
         self.i2c_srv_freq_name = "i2c_set_sens_freq"
         self.i2c_srv_cal_name = "i2c_save_cal"
         self.uart_srv_freq_name = "uart_set_sens_freq"
@@ -45,6 +46,7 @@ class CTRLROS():
         self.i2c_srv_cal = None
         self.uart_srv_freq = None
         self.uart_srv_cal = None
+        self.imu_sub = None
 
         self.uart_sensors = dict()
         self.uart_actuators = dict()
@@ -108,19 +110,38 @@ class CTRLROS():
         self.uart_sensors = {"Front Right": msg.FR, "Front Left": msg.FL, "Back Right": msg.BR, 
                              "Back Left": msg.BL, "Run Time": msg.run_time, "UART IO Time": msg.io_time,
                              "UART Loop Time": msg.loop_time, "UART Time Stamp": msg.ocm_time}
+
         ros.logdebug("UART sensor update received: " + str(self.uart_sensors))
 
     def __i2c_ros_sub(self, msg):
 
-        self.i2c_sensors = utils.dict_keys_to_str(json.loads(msg.data))
+        self.i2c_sensors =  {"Acc X": msg.acc_x, "Acc Y": msg.acc_y, "Acc Z": msg.acc_z, 
+                             "Grav X": msg.grav_x, "Grav Y": msg.grav_y, "Grav Z": msg.grav_z,
+                             "H": msg.h, "R": msg.r,  "P": msg.p, "Cal Sys": msg.cal_sys,
+                             "Cal Acc": msg.cal_acc, "Cal Gyro": msg.cal_gyro, "Cal Mag": msg.cal_mag,  
+                             "I2C IO Time": msg.io_time, "Run Time": msg.run_time, "I2C Timestamp": msg.time_stamp}
+
+        ros.logdebug("I2C sensor update received: " + str(self.i2c_sensors))
+
+
+    def __imu_ros_sub(self, msg):
+
+        self.i2c_sensors =  {"Acc X": msg.linear_acceleration.x, "Acc Y": msg.linear_acceleration.y, 
+                             "Acc Z": msg.linear_acceleration.z, "H": msg.orientation.x, 
+                             "R": msg.orientation.y,  "P": msg.orientation.z,  
+                             "Run Time": msg.header.stamp.secs}
+
         ros.logdebug("I2C sensor update received: " + str(self.i2c_sensors))
 
     def start(self):
 
         ros.init_node(self.node_name, log_level=ros.INFO)
         self.uart_pub = ros.Publisher(self.uart_pub_name, Motors, queue_size=self.queue_size)
-        self.i2c_sub = ros.Subscriber(self.i2c_sub_name, Imu, callback=self.__i2c_ros_sub, queue_size=self.queue_size)
         self.uart_sub = ros.Subscriber(self.uart_sub_name, Sensors, callback=self.__uart_ros_sub, queue_size=self.queue_size)
+
+        # Comment one of the two for simulation or real robot
+        self.i2c_sub = ros.Subscriber(self.i2c_sub_name, Imu, callback=self.__i2c_ros_sub, queue_size=self.queue_size)
+        #self.mu_sub = ros.Subscriber(self.sim_imu_name, Imu, callback=self.__imu_ros_sub, queue_size=self.queue_size)
 
         # try:
         #     ros.wait_for_service(self.i2c_srv_freq_name, timeout=2)
@@ -131,7 +152,6 @@ class CTRLROS():
         # except ros.exceptions.ROSException as exc:
         #     ros.logerr(str(exc) + " ! Please, check that the UART and I2C nodes are started on the ROS network")
         #     pass
-
 
         self.i2c_srv_freq = ros.ServiceProxy(self.i2c_srv_freq_name, Frequency)
         self.i2c_srv_cal = ros.ServiceProxy(self.i2c_srv_cal_name, Trigger)

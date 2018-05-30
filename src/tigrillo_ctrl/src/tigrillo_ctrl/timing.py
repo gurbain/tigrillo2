@@ -39,18 +39,17 @@ class Timer(object):
         self.print_dt = print_dt
         self.time_since_print = 0
 
-
-        self.rate = ros.Rate(1.0/self.sdt)
-
     def start(self):
         """ Start the real-time clock """
 
         self.rt = datetime.datetime.now()
         self.rt_init = copy(self.rt)
+        self.rate = ros.Rate(1.0/self.sdt)
         self.rt_end = self.rt_init + datetime.timedelta(seconds=self.st_end)
 
         self.st = 0
         self.st_init = 0
+        self.ctrl_time = self.rt
         self.print_info()
 
     def update(self):
@@ -72,6 +71,11 @@ class Timer(object):
         self.st = new_st
         self.rt = new_rt
 
+        self.it += 1
+        #self.rate.sleep()
+        pause.until(self.rt_init + datetime.timedelta(seconds=new_st))
+        self.ctrl_time = datetime.datetime.now()
+
         # Print info with a given frequency
         if self.time_since_print < self.print_dt:
             self.time_since_print += self.sdt
@@ -79,16 +83,14 @@ class Timer(object):
             self.time_since_print = 0
             self.print_info()
 
-        self.it += 1
-        self.rate.sleep()
-        self.ctrl_time = datetime.datetime.now()
-
     def print_info(self):
         """ Print info over timing and iterations number """
 
         ros.loginfo("Epoch: " + str(self.it) + "/" + str(self.n_it) +
-              " (sim time: " + "%.2f" % self.st + "/" +  "%.2f" % self.st_end +  ")\tReal dt = " + 
-              "%.4f" % self.rdt.total_seconds() + "s and Sim dt = " + "%.4f" % self.sdt + "s")
+              " (ST: " + "%.3f" % self.st + "/" +  "%.0f" % self.st_end +  " and RT: " + \
+              "%.3f" % (datetime.datetime.now() - self.rt_init).total_seconds() + \
+              "/%.0f)" % self.st_end + "  real dt = " + "%.4f" % self.rdt.total_seconds() + \
+              "s and sim dt = " + "%.4f" % self.sdt + "s")
 
     def is_finished(self):
         """ Return a boolean set to True if the simulation is timer is over """

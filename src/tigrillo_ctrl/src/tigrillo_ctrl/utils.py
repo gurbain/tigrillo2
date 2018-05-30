@@ -9,9 +9,11 @@ import datetime
 import git
 import logging
 #from mpi4py import MPI as mpi
+import numpy as np
 import os
 import platform
 from shutil import copyfile
+from scipy import signal
 import subprocess
 #import tigrillo
 import time
@@ -239,3 +241,35 @@ def get_config_string(config):
         for (key, val) in config.items(sec):
             string += "\n" + key + "=" + val
     return string + "\n\n"
+
+
+class LPFilter():
+
+    def __init__(self, fc=10, order=50, fs=50):
+
+        self.fs = fs
+        self.fc = fc
+        self.order = order
+        self.buffLen = 3 * self.order
+        self.filt_b = signal.firwin(self.order, float(self.fc) / self.fs)
+        self.filt_a = [1]
+        self.fifo = [] 
+
+
+    def filter(self, sig):
+
+        # Get prev time_steps and convert to numpy matrix
+        if not self.fifo:
+            for i in range(self.buffLen):
+                self.fifo.append(np.zeros(np.array(sig).shape))
+        self.fifo.pop(0)
+        self.fifo.append(sig)
+        sigMat = np.mat(self.fifo[0])
+        for i in range(len(self.fifo)):
+            sigMat = np.vstack((sigMat, self.fifo[i]))
+
+        filtSig = np.zeros(sigMat.shape[1])
+        for i in range(sigMat.shape[1]):
+            filtSig[i] = signal.lfilter(self.filt_b, self.filt_a, sigMat[:, i].T)[:, -1]
+
+        return filtSig

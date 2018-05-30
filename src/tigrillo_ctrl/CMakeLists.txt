@@ -18,6 +18,8 @@ add_message_files(DIRECTORY msg
 				  Sensors.msg
 				  Imu.msg
 				  Motors.msg
+          ANNStats.msg
+          WoutStats.msg
 )
 
 catkin_python_setup()

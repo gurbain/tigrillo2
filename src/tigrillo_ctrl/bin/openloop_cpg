@@ -34,6 +34,7 @@ if __name__ == '__main__':
     rob.start()
 
     # Create a controller with config file
+    print config
     ctl = control.CPG(config)
 
     # Initialise the other nodes
@@ -48,10 +49,6 @@ if __name__ == '__main__':
 
         # Produce actuators control signal
         command = ctl.step(t.st)
-        i = 0
-        for c in command:
-            command[i] = c / 180 * 3.14159 + 0.5
-            i += 1
 
         # Update the robot actuators
         rob.update_actuators(command, t.st)

@@ -21,7 +21,7 @@ __email__ = "gabriel.urbain@ugent.be"
 __status__ = "Research" 
 __date__ = "April 10th, 2018"
 
-PKL_FILE = "/home/gabs48/src/quadruped/tigrillo2/src/tigrillo_ctrl/nrp/bounding.pkl"
+PKL_FILE = "/home/gabs48/src/quadruped/tigrillo2/src/tigrillo_ctrl/nrp/walking.pkl"
 
 
 if __name__ == '__main__':
@@ -29,8 +29,6 @@ if __name__ == '__main__':
     # Create config file from Alex pkl
     with open(PKL_FILE, "rb") as f:
         config = pickle.load(f)
-
-    print config
 
     # Create and configure robot
     rob = ctrl_ros.CTRLROS()
@@ -51,10 +49,7 @@ if __name__ == '__main__':
 
         # Produce actuators control signal
         command = ctl.step(t.st)
-        i = 0
-        for c in command:
-            command[i] = c
-            i += 1
+        command[1] = command[0]
 
         # Update the robot actuators
         rob.update_actuators(command, t.st)

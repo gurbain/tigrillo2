@@ -1,0 +1,135 @@
+#! /usr/bin/env python
+
+from collections import deque
+import math
+import numpy as np
+import os
+import pickle
+import psutil
+import rospy as ros
+import sys
+import time
+
+import tigrillo_ctrl
+from tigrillo_ctrl import control, timing, ctrl_ros, utils
+from tigrillo_ctrl import FORCE_ANN_NRP_4t as fan 
+
+
+__author__ = "Gabriel Urbain" 
+__copyright__ = "Copyright 2017, Human Brain Projet, SP10"
+
+__license__ = "MIT" 
+__version__ = "2.0" 
+__maintainer__ = "Gabriel Urbain"
+__email__ = "gabriel.urbain@ugent.be" 
+__status__ = "Research" 
+__date__ = "May 3rd, 2018"
+
+TARGET_FILE_NOT_USED = "/home/gabs48/src/quadruped/tigrillo2/src/tigrillo_ctrl/nrp/downsampled_cpg_calibratedT_20Hz.npy"
+REAL_TARGET_FILE = "/home/gabs48/src/quadruped/tigrillo2/src/tigrillo_ctrl/nrp/bounding.pkl"
+
+
+if __name__ == '__main__':
+
+    ############ SETUP ############
+
+    # Set experiment variables
+    reservoir_size = 200
+    reservoir_killed_neurons = 60
+    input_number = 4
+    input_memory = 1
+    time_step = 0.03
+    ol_time = 40
+    mix_time = 60
+    cl_learn_time = 0.1
+    cl_work_time = 200
+    
+    sim_time = ol_time + mix_time + cl_learn_time + cl_work_time
+    print("== Experiment timing ==")
+    print("\tOpen Loop: 0s to %.1fs\n\t" % ol_time + "Mixed Loop: %.1fs to " % ol_time + \
+          "%.1fs\n\t" % (ol_time + mix_time) + "Closed Loop Learning: %.1fs to " % (ol_time + mix_time) + \
+          "%.1fs\n\t" % (ol_time + mix_time + cl_learn_time) + "Closed Loop Work: %.1fs to " % (ol_time + mix_time + cl_learn_time) + 
+          "%.1fs." % sim_time)
+
+    # Create and configure robot
+    rob = ctrl_ros.CTRLROS()
+    rob.start()
+
+    # Create a controller with config file #9.9952822022920138
+    force_ann_params_name = ['spec_rad', 'scale_w_fb', 'offset_w_fb', 'scale_noise_fb', 'offset_w_res', 'N_toKill', 'FORCE_dur', 'delay', 'post_learn', 'alpha', 'N_sensors']
+    force_ann_params_denorm = [2, 1.65, 0.25, 0., 0.18, reservoir_killed_neurons, np.log10(mix_time/time_step), np.log10(ol_time/time_step), np.log10(cl_learn_time/time_step), 0.12440507262210909, input_number*input_memory]
+    force_ann_params = dict((x, y) for x, y in zip(force_ann_params_name, force_ann_params_denorm))
+    ctl = fan.force_ann_experiment(force_ann_params, res_size=reservoir_size, target=TARGET_FILE_NOT_USED, HLI=False, N_sensors=force_ann_params["N_sensors"])
+
+    # Set timing
+    rob.set_sensors_frequency(int(1 / time_step))
+    t = timing.Timer(real_time=True, runtime=sim_time, dt=time_step, print_dt=0.1)
+
+    # Create a target command signal
+    with open(REAL_TARGET_FILE, "rb") as f:
+        config = pickle.load(f)
+    config["Controller"]["time_step"] = time_step
+    config["Controller"]["runtime"] = sim_time
+    tgt = control.CPG(config)
+    t.start()
+
+    # Create a memory buffer
+    input_buff = deque([0] * input_number * input_memory)
+
+    ############ LOOP ############
+
+    m = []
+    mn = []
+    lpfilter = utils. LPFilter(fc=5, order=10, fs=1/time_step)
+    while not t.is_finished():
+
+        # Get the last sensors
+        measure = rob.get_last_sensors()
+
+        # Normalize joint readouts to feed to ANN
+        measure_arr = np.array([measure["Front Left"], measure["Front Right"], \
+                                measure["Back Left"], measure["Back Right"]])
+
+        m.append(measure_arr)
+        measure_normed = np.zeros(measure_arr.shape)
+        measure_normed[0] = measure_arr[0] * 0.1 - 5
+        measure_normed[1] = measure_arr[1] * 0.1 - 5
+        measure_normed[2] = measure_arr[2] * 0.1 - 5
+        measure_normed[3] = measure_arr[3] * 0.1 - 5
+        mn.append(measure_normed)
+
+        # Low-pass filter joint readouts
+        f_input = lpfilter.filter(measure_normed)
+        #f_input = measure_normed
+
+        # Fill the memory buffer
+        for i in f_input:
+            input_buff.pop()
+            input_buff.appendleft(i)
+
+        it_input = np.zeros((1, input_number*input_memory))
+        it_input[0] = np.array(input_buff)
+
+        # Produce target control signal
+        target_array = np.array(tgt.step(t.st)) #  np.array([50 * math.sin(2*t.st) + 20] *4)
+        #target_array[1] = target_array[0]
+        target = np.zeros((1, 4))
+        target[0] = np.array(target_array)
+
+        # Perform a step in the ANN with FORCE learning
+        command = ctl.step(it_input, t.it, target)[0]
+
+        # Update timers and wait until the right actuation time
+        t.update()
+
+        # Update the robot actuators
+        rob.update_actuators(command, t.st)
+
+    ############ CLOSE ############
+
+    print("\n== Experiment Closing ==")
+    print("\tNormalized minimum inputs: " + str(np.array(mn).min(axis=0)))
+    print("\tNormalized maximum inputs: " + str(np.array(mn).max(axis=0)))
+    print("\tUnormalized minimum inputs: " + str(np.array(m).min(axis=0)))
+    print("\tUnormalized maximum inputs: " + str(np.array(m).max(axis=0)))
+    t.print_info()
