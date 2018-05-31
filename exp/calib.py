@@ -10,9 +10,11 @@ plt.rc('savefig', facecolor='white')
 plt.rc('figure', autolayout=True)
 
 import cma
+import datetime
 import numpy as np
 from collections import OrderedDict
 import os
+import pause
 import rosbag
 import rospy as ros
 from scipy.interpolate import interp1d
@@ -36,8 +38,8 @@ class Score(object):
 
     def __init__(self):
 
-        self.start_eval_time = 25
-        self.stop_eval_time = 55
+        self.start_eval_time = 23
+        self.stop_eval_time = 40
         self.eval_points = 1000
 
         self.t_new = None
@@ -411,8 +413,8 @@ class Optimization(Score):
 
         self.sim_time = 0
         self.sim_timeout = 100
-        self.start_time = 20
-        self.stop_time = 56
+        self.start_time = 22
+        self.stop_time = 41
         self.pool_number = 1
         self.max_iter = 5000
         self.init_var = 0.4
@@ -420,6 +422,7 @@ class Optimization(Score):
         self.max = 1
         self.pop_size = 0
         self.score_method = "av_period"
+        self.sim_speed = "real_time"
 
         self.it = 0
         self.pool = 0
@@ -584,6 +587,49 @@ class Optimization(Score):
         p.stop()
         return 0
 
+    def sim_rt(self, time_step=0.005):
+
+        # Create the simulation handle
+        p = physics.Gazebo("tigrillo_rt.world", view=False)
+        p.start()
+
+        # Wait for the gzserver process to be started
+        t_init = time.time()
+        while not p.is_sim_started():
+            time.sleep(0.001)
+            if (time.time() - t_init) > self.sim_timeout:
+                p.stop()
+                return -1
+
+        # Perform simulation loop
+        time_bias = self.start_time
+        rt_init = datetime.datetime.now()
+        st = 0
+        j = 0
+        while st < (self.stop_time - self.start_time):
+
+            # Actuate
+            st = p.get_gazebo_time()
+            rt = rt_init + datetime.timedelta(seconds=((j+1) * time_step))
+            command = self.act(st + time_bias)
+            p.actuate(command)
+
+            # Record simulation sensor signal
+            s = p.get_sensors().copy()
+            i = p.get_imu().copy()
+            s["time"] += time_bias
+            self.sens_sim_sig.append(s)
+            self.imu_sim_sig.append(i)
+            self.mot_sim_sig.append({"FL": command[0], "FR": command[1], "BL": command[2], "BR": command[3], "time": st + time_bias})
+
+            # Pause
+            pause.until(rt)
+            j += 1
+        
+        # Stop the simulator
+        p.stop()
+        return 0
+
     def cleanup(self):
 
         self.sens_sim_sig = []
@@ -604,7 +650,10 @@ class Optimization(Score):
         self.model()
 
         # Perform simulation
-        res = self.sim()
+        if self.sim_speed == "real_time":
+            res = self.sim_rt()
+        else:
+            res = self.sim()
         self.t_it_stop = time.time()
         self.pool += 1
 
@@ -662,6 +711,7 @@ class Optimization(Score):
             to_save["stop_time"] = self.stop_time
             to_save["pop"] = self.pop_size
             to_save["pool_number"] = self.pool_number
+            to_save["sim_speed"] = self.sim_speed
             to_save["min"] = self.min
             to_save["max"] = self.max
             to_save["params_min"] = self.params_min
