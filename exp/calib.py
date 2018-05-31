@@ -231,25 +231,32 @@ class Score(object):
         self.interpolate()
         # self.plot_sensors()
 
-        rob_new = np.vstack((self.fl_rob_new, self.fr_rob_new))
-        sim_new = np.vstack((self.fl_sim_new, self.fr_sim_new))
+        # Remove bias to center around 0
+        fl_rob_mean, fl_sim_mean = utils.center_norm_2(self.fl_rob_new, self.fl_sim_new)
+        fr_rob_mean, fr_sim_mean = utils.center_norm_2(self.fr_rob_new, self.fr_sim_new)
+        bl_rob_mean, bl_sim_mean = utils.center_norm_2(self.bl_rob_new, self.bl_sim_new)
+        br_rob_mean, br_sim_mean = utils.center_norm_2(self.br_rob_new, self.br_sim_new)
+
+        # Stack and get score
+        rob_new = np.vstack((fl_rob_mean, fr_rob_mean, bl_rob_mean, br_rob_mean))
+        sim_new = np.vstack((fl_sim_mean, fr_sim_mean, bl_sim_mean, br_sim_mean))
         score = utils.nrmse(rob_new, sim_new)
 
-
         # Penalize fall and explosion
-        x_angle = np.array([i["ori_x"]/i["ori_w"] for i in self.imu_sim_sig])
-        if True in (x_angle < -0.6):
-            sys.stdout.write("[Fall     ]\t")
-            if math.isnan(score):
-                score = 1
-            else:
-                score += 0.5
+        x = np.array([i["ori_x"] for i in self.imu_sim_sig])
+        y = np.array([i["ori_y"] for i in self.imu_sim_sig])
+        if ((x == 0.0).sum() / float(x.size)) > 0.1:
+            sys.stdout.write("[Explosion]\t")
+            score = 1
         else:
-            if ((x_angle == 0.0).sum() / float(x_angle.size)) > 0.1:
-                sys.stdout.write("[Explosion]\t")
-                score = 1
-            else:
-                sys.stdout.write("[Success  ]\t")
+            # if (True in (x < -60)) or (True in (x > 60)) or (True in (y < -60)) or (True in (y > 60)):
+            #     sys.stdout.write("[Fall     ]\t")
+            #     if math.isnan(score):
+            #         score = 1
+            #     else:
+            #         score += 0.5
+            # else:
+            sys.stdout.write("[Success  ]\t")
 
         return score
 
