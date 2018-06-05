@@ -409,14 +409,23 @@ class Optimization(Score):
         self.norm_params = []
 
         # Optimization metaparameter
-        self.params_names = ["Front Mass", "Back Mass", "Front Friction mu1", "Front Friction mu2", "Front Friction Contact Depth",
-                             "Back Friction mu1", "Back Friction mu2", "Back Friction Contact Depth", "Front Damping",
-                             "Front Stiffness", "Back Damping", "Back Stiffness", "Front Compression Tolerance", "Back Compression Tolerance"]
-        self.params_units = ["kg", "kg", " ", " ", "mm", " ", " ", "mm", "N.s/m", "N/m", "N.s/m", "N/m", "mm", "mm"]
+        self.params_names = ["Front Mass", "Back Mass", 
+                             "FL Friction mu1", "FR Friction mu1", "BL Friction mu1", "BR Friction mu1", 
+                             "FL Friction mu2", "FR Friction mu2", "BL Friction mu2", "BR Friction mu2", 
+                             "FL Friction Contact Depth", "FR Friction Contact Depth","BL Friction Contact Depth", "BR Friction Contact Depth", 
+                             "FL Damping", "FR Damping", "BL Damping", "BR Damping",
+                             "FL Stiffness", "FR Stiffness", "BL Stiffness", "BR Stiffness", 
+                             "FL Compression Tolerance", "FR Compression Tolerance", "BL Compression Tolerance", "BR Compression Tolerance"]
+        self.params_units = ["kg", "kg", " ", " ", " ", " ", " ", " ", " ", " ", 
+                             "mm", "mm", "mm", "mm", "N.s/m", "N.s/m", "N.s/m", "N.s/m",
+                             "N/m", "N/m", "N/m", "N/m", "mm", "mm", "mm", "mm"]
         self.params_unormed = []
-        self.params_normed = [0.5, 0.5, 0.5,   0.5,   0.5,    0.5,   0.5,   0.5,    0.5,   0.5,  0.5,   0.5, 0.5, 0.5]
-        self.params_min =    [0.1, 0.1, 0.001, 0.001, 0.0001, 0.001, 0.001, 0.0001, 0.01,  2,    0.01,  2,   0.7, 0.7] 
-        self.params_max =    [2,   2,   50,    50,    0.01,   50,    50,    0.01,   0.1,   40,   0.1,   40,  1.2, 1.2]
+        self.params_normed = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5,
+                              0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
+        self.params_min =    [0.1, 0.1, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.0001, 0.0001, 0.0001, 0.0001,
+                              0.01, 0.01, 0.01, 0.01, 2, 2, 2, 2, 0.7, 0.7, 0.7, 0.7]
+        self.params_max =    [2, 2, 50, 50, 50, 50, 50, 50, 50, 50, 0.01, 0.01, 0.01, 0.01,
+                              0.1, 0.1, 0.1, 0.1, 40, 40, 40, 40, 1.2, 1.2, 1.2, 1.2]
 
         self.sim_time = 0
         self.sim_timeout = 100
@@ -508,30 +517,29 @@ class Optimization(Score):
         self.conf["body"]["front"]["mass"] = self.params_unormed[0]
         self.conf["body"]["hind"]["mass"] = self.params_unormed[1]
         self.conf["legs"]["FL"]["foot"]["mu1"] = self.params_unormed[2]
-        self.conf["legs"]["FL"]["foot"]["mu2"] = self.params_unormed[3]
-        self.conf["legs"]["FL"]["foot"]["contact_depth"] = self.params_unormed[4]
-        self.conf["legs"]["FR"]["foot"]["mu1"] = self.params_unormed[2]
-        self.conf["legs"]["FR"]["foot"]["mu2"] = self.params_unormed[3]
-        self.conf["legs"]["FR"]["foot"]["contact_depth"] = self.params_unormed[4]
-        self.conf["legs"]["BL"]["foot"]["mu1"] = self.params_unormed[5]
-        self.conf["legs"]["BL"]["foot"]["mu2"] = self.params_unormed[6]
-        self.conf["legs"]["BL"]["foot"]["contact_depth"] = self.params_unormed[7]
+        self.conf["legs"]["FR"]["foot"]["mu1"] = self.params_unormed[3]
+        self.conf["legs"]["BL"]["foot"]["mu1"] = self.params_unormed[4]
         self.conf["legs"]["BR"]["foot"]["mu1"] = self.params_unormed[5]
-        self.conf["legs"]["BR"]["foot"]["mu2"] = self.params_unormed[6]
-        self.conf["legs"]["BR"]["foot"]["contact_depth"] = self.params_unormed[7]
-        self.conf["legs"]["FL"]["knee_damping"] = self.params_unormed[8]
-        self.conf["legs"]["FL"]["spring_stiffness"] = self.params_unormed[9]
-        self.conf["legs"]["FR"]["knee_damping"] = self.params_unormed[8]
-        self.conf["legs"]["FR"]["spring_stiffness"] = self.params_unormed[9]
-        self.conf["legs"]["BL"]["knee_damping"] = self.params_unormed[10]
-        self.conf["legs"]["BL"]["spring_stiffness"] = self.params_unormed[11]
-        self.conf["legs"]["BR"]["knee_damping"] = self.params_unormed[10]
-        self.conf["legs"]["BR"]["spring_stiffness"] = self.params_unormed[11]
-
-        self.conf["legs"]["FL"]["spring_comp_tol"] = self.params_unormed[12]
-        self.conf["legs"]["FR"]["spring_comp_tol"] = self.params_unormed[12]
-        self.conf["legs"]["BL"]["spring_comp_tol"] = self.params_unormed[13]
-        self.conf["legs"]["BR"]["spring_comp_tol"] = self.params_unormed[13]
+        self.conf["legs"]["FL"]["foot"]["mu2"] = self.params_unormed[6]
+        self.conf["legs"]["FR"]["foot"]["mu2"] = self.params_unormed[7]
+        self.conf["legs"]["BL"]["foot"]["mu2"] = self.params_unormed[8]
+        self.conf["legs"]["BR"]["foot"]["mu2"] = self.params_unormed[9]  
+        self.conf["legs"]["FL"]["foot"]["contact_depth"] = self.params_unormed[10]
+        self.conf["legs"]["FR"]["foot"]["contact_depth"] = self.params_unormed[11]
+        self.conf["legs"]["BL"]["foot"]["contact_depth"] = self.params_unormed[12]
+        self.conf["legs"]["BR"]["foot"]["contact_depth"] = self.params_unormed[13]
+        self.conf["legs"]["FL"]["knee_damping"] = self.params_unormed[14]
+        self.conf["legs"]["FR"]["knee_damping"] = self.params_unormed[15]
+        self.conf["legs"]["BL"]["knee_damping"] = self.params_unormed[16]
+        self.conf["legs"]["BR"]["knee_damping"] = self.params_unormed[17]
+        self.conf["legs"]["FL"]["spring_stiffness"] = self.params_unormed[18]
+        self.conf["legs"]["FR"]["spring_stiffness"] = self.params_unormed[19]
+        self.conf["legs"]["BL"]["spring_stiffness"] = self.params_unormed[20]
+        self.conf["legs"]["BR"]["spring_stiffness"] = self.params_unormed[21]
+        self.conf["legs"]["FL"]["spring_comp_tol"] = self.params_unormed[22]
+        self.conf["legs"]["FR"]["spring_comp_tol"] = self.params_unormed[23]
+        self.conf["legs"]["BL"]["spring_comp_tol"] = self.params_unormed[24]
+        self.conf["legs"]["BR"]["spring_comp_tol"] = self.params_unormed[25]
 
         fg = model.SDFileGenerator(self.conf, self.model_file, model_scale=1, gazebo=True)
         fg.generate()
@@ -708,7 +716,7 @@ class Optimization(Score):
                    "fl_sim": self.fl_sim_new, "fr_sim": self.fr_sim_new, \
                    "bl_sim": self.bl_sim_new, "br_sim": self.br_sim_new}
         if self.it == 0:
-            to_save["file_script"] = open(os.path.basename(__file__), 'r').read()
+            to_save["file_script"] = open(os.path.basename("calib.py"), 'r').read()
             to_save["sim_file"] = self.sim_file
             to_save["bag_file"] = self.bag_file
             to_save["model_file"] = self.model_file
