@@ -532,10 +532,10 @@ class Optimization(Score):
         self.conf["legs"]["FR"]["knee_damping"] = self.params_unormed[15]
         self.conf["legs"]["BL"]["knee_damping"] = self.params_unormed[16]
         self.conf["legs"]["BR"]["knee_damping"] = self.params_unormed[17]
-        self.conf["legs"]["FL"]["spring_stiffness"] = self.params_unormed[18]
-        self.conf["legs"]["FR"]["spring_stiffness"] = self.params_unormed[19]
-        self.conf["legs"]["BL"]["spring_stiffness"] = self.params_unormed[20]
-        self.conf["legs"]["BR"]["spring_stiffness"] = self.params_unormed[21]
+        self.conf["legs"]["FL"]["spring_stiffness"] = 181.6
+        self.conf["legs"]["FR"]["spring_stiffness"] = 181.6
+        self.conf["legs"]["BL"]["spring_stiffness"] = 181.6
+        self.conf["legs"]["BR"]["spring_stiffness"] = 181.6
         self.conf["legs"]["FL"]["spring_comp_tol"] = self.params_unormed[22]
         self.conf["legs"]["FR"]["spring_comp_tol"] = self.params_unormed[23]
         self.conf["legs"]["BL"]["spring_comp_tol"] = self.params_unormed[24]
@@ -621,7 +621,13 @@ class Optimization(Score):
         rt_init = datetime.datetime.now()
         st = 0
         j = 0
+        t_init = time.time()
         while st < (self.stop_time - self.start_time):
+
+            # Timeout if failure
+            if (time.time() - t_init) > self.sim_timeout:
+                p.stop()
+                return -1
 
             # Actuate
             st = p.get_gazebo_time()

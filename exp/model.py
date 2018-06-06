@@ -773,7 +773,9 @@ class SDFileGenerator(object):
         j_child.text = name
         j_xyz.text = "1 0 0"
         j_damping.text = str(damp)
-        j_spring_stiffness.text = str(k_spring * g * math.acos((e**2 + g**2 - f**2) / (2 * e * g)))
+        gamma_0 = math.acos((e**2 + g**2 - f**2) / (2 * e * g))
+        omega_0 = math.acos((f**2 + g**2 - e**2) / (2 * f * g))
+        j_spring_stiffness.text = str((k_spring * g * math.sin(gamma_0) * e) / omega_0) 
         j_lower.text = str(compression_tol - a)
         j_upper.text = str(math.pi/2)
 
