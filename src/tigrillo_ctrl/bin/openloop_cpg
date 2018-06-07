@@ -21,7 +21,7 @@ __status__ = "Research"
 __date__ = "December 5th, 2017"
 
 
-DEFAULT_CONFIG = utils.CONFIG_FOLDER + "/run_ol.cfg"
+DEFAULT_CONFIG = utils.CONFIG_FOLDER + "/walk_ol.cfg"
 
 
 if __name__ == '__main__':

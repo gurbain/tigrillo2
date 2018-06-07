@@ -76,7 +76,7 @@ model_config = {
             'hip_damping': 0.05,
             'knee_damping': 0.01,
             'spring_stiffness': 6,
-            'spring_comp_tol': 0.86,
+            'spring_comp_tol': 0.88,
             'actuator_kp': 254,
         },
         'FR': {
@@ -105,7 +105,7 @@ model_config = {
             'hip_damping': 0.05,
             'knee_damping': 0.01,
             'spring_stiffness': 12,
-            'spring_comp_tol': 0.985,
+            'spring_comp_tol': 0.96,
             'actuator_kp': 254,
         },
         'BL': {
