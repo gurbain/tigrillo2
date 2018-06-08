@@ -428,18 +428,19 @@ class Optimization(Score):
         self.sim_timeout = 60
         self.start_time = 22
         self.stop_time = 41
-        self.pool_number = 1
+        self.pool_number = 5
         self.max_iter = 10000
         self.init_var = 0.3
         self.min = 0
         self.max = 1
         self.pop_size = 0
         self.score_method = "av_period_t_inv"
-        self.sim_speed = "real_time"
+        self.sim_speed = "synchrone"
 
         self.it = 0
         self.pool = 0
         self.score = 0
+        self.score_var = 0
         self.t_init = None
         self.t_it_stop = None
 
@@ -641,6 +642,54 @@ class Optimization(Score):
         p.stop()
         return 0
 
+    def sim_sync(self, time_step=0.02):
+
+        # Create the simulation handle
+        p = physics.Gazebo("tigrillo.world", view=False)
+        p.start()
+
+        # Wait for the gzserver process to be started, then directly pause it
+        t_init = time.time()
+        while not p.is_sim_started():
+            time.sleep(0.001)
+            if (time.time() - t_init) > self.sim_timeout:
+                p.stop()
+                return -1
+        p.pause_gazebo()
+
+        # Perform simulation loop
+        time_bias = self.start_time
+        st = 0
+        j = 0
+        t_init = time.time()
+        while st < (self.stop_time - self.start_time):
+
+            # Timeout if failure
+            if (time.time() - t_init) > self.sim_timeout:
+                p.stop()
+                return -1
+
+            # Actuate
+            st = p.get_gazebo_time()
+            command = self.act(st + time_bias)
+            p.actuate(command)
+
+            # Record simulation sensor signal
+            s = p.get_sensors().copy()
+            i = p.get_imu().copy()
+            s["time"] += time_bias
+            self.sens_sim_sig.append(s)
+            self.imu_sim_sig.append(i)
+            self.mot_sim_sig.append({"FL": command[0], "FR": command[1], "BL": command[2], "BR": command[3], "time": st + time_bias})
+
+            # Update gazebo of 2
+            p.step_gazebo(int(time_step*1000))
+            j += 1
+        
+        # Stop the simulator
+        p.stop()
+        return 0
+
     def cleanup(self):
 
         self.sens_sim_sig = []
@@ -663,6 +712,8 @@ class Optimization(Score):
         # Perform simulation
         if self.sim_speed == "real_time":
             res = self.sim_rt()
+        elif self.sim_speed == "synchrone":
+            res = self.sim_sync()
         else:
             res = self.sim()
         self.t_it_stop = time.time()
@@ -694,7 +745,8 @@ class Optimization(Score):
             
             self.pool = 0
             self.score = np.nanmean(np.array(score_arr))
-            print("Iteration average score = {0:.4f}\n".format(self.score))
+            self.score_var = np.nanvar(np.array(score_arr))
+            print("Iteration average score = {0:.4f}".format(self.score) + " +/- {0:.4f}\n".format(self.score_var))
         else:
             self.score = self.pool_eval(parameters)
         
@@ -711,6 +763,8 @@ class Optimization(Score):
                    "config": self.conf, "elapsed time": self.t_it_stop - self.t_init, \
                    "fl_sim": self.fl_sim_new, "fr_sim": self.fr_sim_new, \
                    "bl_sim": self.bl_sim_new, "br_sim": self.br_sim_new}
+        if self.pool_number > 1:
+            to_save["score_var"] = self.score_var
         if self.it == 0:
             to_save["file_script"] = open(os.path.basename("calib.py"), 'r').read()
             to_save["sim_file"] = self.sim_file

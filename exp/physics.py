@@ -13,6 +13,7 @@ from rosgraph_msgs.msg import Clock
 from gazebo_msgs.msg import ModelStates
 from std_msgs.msg import Float32MultiArray
 from std_srvs.srv import Empty
+from gazebo_msgs.srv import AdvanceSimulation
 from tigrillo_2_plugin.msg import Sensors, Motors
 from sensor_msgs.msg import Imu
 
@@ -49,6 +50,7 @@ class Gazebo(threading.Thread):
         self.reset_sim_service = '/gazebo/reset_simulation'
         self.pause_sim_service = '/gazebo/pause_physics'
         self.unpause_sim_service = '/gazebo/unpause_physics'
+        self.step_sim_service = "/gazebo/advance_simulation"
         self.pose_sub_name = '/gazebo/model_states'
         self.clock_sub_name = '/clock'
         self.motor_pub_name = '/tigrillo_rob/uart_actuators'
@@ -73,6 +75,7 @@ class Gazebo(threading.Thread):
         self.reset_sim_proxy = ros.ServiceProxy(self.reset_sim_service, Empty)
         self.pause_sim_proxy = ros.ServiceProxy(self.pause_sim_service, Empty)
         self.unpause_sim_proxy = ros.ServiceProxy(self.unpause_sim_service, Empty)
+        self.step_sim_proxy = ros.ServiceProxy(self.step_sim_service, AdvanceSimulation)
         self.motor_pub = ros.Publisher(self.motor_pub_name, Motors, queue_size=1)
         self.sub_clock = ros.Subscriber(self.clock_sub_name, Clock, callback=self._reg_sim_duration, queue_size=1)
         self.sensor_sub = ros.Subscriber(self.sensor_sub_name, Sensors, callback=self._reg_sensors, queue_size=1)
@@ -134,6 +137,14 @@ class Gazebo(threading.Thread):
             self.unpause_sim_proxy()
         except ros.ServiceException as e:
             print("Unpause simulation service call failed with error" + str(e))
+
+    def step_gazebo(self, timestep):
+
+        #ros.wait_for_service(self.step_sim_service)
+        try:
+            self.step_sim_proxy(timestep)
+        except ros.ServiceException as e:
+            print("Simulation step service call failed with error" + str(e))
 
     def get_gazebo_status(self):
 
