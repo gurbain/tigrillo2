@@ -38,8 +38,8 @@ class Score(object):
 
     def __init__(self):
 
-        self.start_eval_time = 23
-        self.stop_eval_time = 40
+        self.start_eval_time = 25
+        self.stop_eval_time = 62
         self.eval_points = 1000
 
         self.t_new = None
@@ -356,6 +356,7 @@ class Score(object):
         ma = max(act_new)
         plt.plot(self.t_new, act_new, linewidth=1, label="FL Act")
         plt.plot(self.t_new, self.fl_rob_new, linewidth=1, label="FL Rob")
+        plt.plot(self.t_new, self.fl_sim_new, linewidth=1, label="FL Sim")
         for t in self.zeros:
              plt.plot([t, t], [mi, ma], linewidth=1)
         plt.savefig(self.save_folder + "period_before_" + str(self.it) + ".png", format='png', dpi=300)
@@ -426,9 +427,9 @@ class Optimization(Score):
 
         self.sim_time = 0
         self.sim_timeout = 60
-        self.start_time = 22
-        self.stop_time = 41
-        self.pool_number = 5
+        self.start_time = 20
+        self.stop_time = 62.1
+        self.pool_number = 1
         self.max_iter = 10000
         self.init_var = 0.3
         self.min = 0
@@ -642,10 +643,10 @@ class Optimization(Score):
         p.stop()
         return 0
 
-    def sim_sync(self, time_step=0.02):
+    def sim_sync(self, time_step=0.01):
 
         # Create the simulation handle
-        p = physics.Gazebo("tigrillo.world", view=False)
+        p = physics.Gazebo("tigrillo_slow.world", view=False)
         p.start()
 
         # Wait for the gzserver process to be started, then directly pause it
@@ -682,7 +683,7 @@ class Optimization(Score):
             self.imu_sim_sig.append(i)
             self.mot_sim_sig.append({"FL": command[0], "FR": command[1], "BL": command[2], "BR": command[3], "time": st + time_bias})
 
-            # Update gazebo of 2
+            # Update gazebo
             p.step_gazebo(int(time_step*1000))
             j += 1
         
