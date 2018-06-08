@@ -99,7 +99,7 @@ def mse(arr1, arr2):
     """ Compute MSE between two arrays (1D) """
 
     assert arr1.shape == arr2.shape, "Mean Square Error can only be computed on matrices with same size"
-    a, b = arr2.shape
+    a, b = np.matrix(arr2).shape
     return np.sum(np.square(arr2 - arr1)) / float(a * b)
 
 
@@ -107,12 +107,27 @@ def nrmse(arr1, arr2):
     """ Compute NRMSE between two arrays (1D) """
 
     # Center signals around 0?
-    
     rmse = np.sqrt(mse(arr1, arr2))
     max_val = max(np.max(arr1), np.max(arr2))
     min_val = min(np.min(arr1), np.min(arr2))
 
     return (rmse / (max_val - min_val))
+
+
+def abse_t_inv(t, max_t, fl_r, fr_r, bl_r, br_r, fl_s, fr_s, bl_s, br_s):
+    
+    t_step = t[1] - t[0]
+    t_range = t[-1] - t[0]
+    t_inc = int(max_t / t_step)
+    score = 100000
+    for i in range(-t_inc, t_inc):
+        fl_nrmse = np.trapz(np.abs(fl_r - np.roll(fl_s, i)), dx=t_step)
+        fr_nrmse = np.trapz(np.abs(fr_r - np.roll(fr_s, i)), dx=t_step)
+        bl_nrmse = np.trapz(np.abs(bl_r - np.roll(bl_s, i)), dx=t_step)
+        br_nrmse = np.trapz(np.abs(br_r - np.roll(br_s, i)), dx=t_step)
+        score = min(score, (fl_nrmse + fr_nrmse + bl_nrmse + br_nrmse) / 4)
+
+    return score
 
 
 def corr(arr1, arr2):

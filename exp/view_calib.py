@@ -185,6 +185,8 @@ class VizWin(QtWidgets.QGridLayout):
             self.simulate(current=False)
         if name  == "Simulate":
             self.simulate(current=True)
+        if name == "Parameters Evolution":
+            self.plotParams()
 
     def plotSensor(self, name):
 
@@ -208,6 +210,7 @@ class VizWin(QtWidgets.QGridLayout):
             self.plot.axes2 = self.plot.fig.add_subplot(212)
             self.plot.axes2.plot(data_init["t"], rob_mean, linewidth=2.5, color=self.getStyleColors()[0], label="Averaged Centered " + l + " Rob")
             self.plot.axes2.plot(data_init["t"], sim_mean, linewidth=2.5, color=self.getStyleColors()[1], label="Averaged Centered " + l + " Sim")
+            self.plot.axes2.fill_between(data_init["t"], np.abs(sim_mean-rob_mean), alpha=0.3, edgecolor=self.getStyleColors()[2], facecolor=self.getStyleColors()[2], label="Absolute Error")
             self.plot.axes2.set_xlim([data_init["t"][0], data_init["t"][-1]])
             self.plot.axes.legend(loc='best', fontsize="x-small")
             # self.plot.axes.set_title("Periodic average of the robot under-actuated front left leg sensor", fontsize=14)
@@ -247,6 +250,29 @@ class VizWin(QtWidgets.QGridLayout):
         self.plot.axes.set_ylabel('Sensor Error')
         self.plot.axes.set_xlabel('Generation Epoch')
         self.plot.axes.legend(loc="upper right", fontsize="small")
+        self.plot.axes.xaxis.label.set_color('white')
+        self.plot.axes.yaxis.label.set_color('white')
+        self.plot.axes.title.set_color('white')
+        # self.plot.save("cma_results.png")
+
+    def plotParams(self, n=4):
+
+        self.clean()
+        
+        t = range(0, len(self.win.sel_conf))
+        params = np.array([i["params"] for i in self.win.sel_conf])[:, -n:].T
+        labels = np.array(self.win.sel_conf[0]["params_names"])[-n:]
+
+        self.plot = SimpleFigure()
+        self.addWidget(self.plot)
+
+        for y_arr, label in zip(params, labels):
+            self.plot.axes.plot(t, y_arr, linewidth=0.8, label=label)
+        
+        self.plot.axes.set_title("Evolution of Optimized Parameters", fontsize=14)
+        self.plot.axes.set_ylabel('Normalized parameters')
+        self.plot.axes.set_xlabel('Generation Epoch')
+        self.plot.axes.legend(loc="upper left", fontsize="small")
         self.plot.axes.xaxis.label.set_color('white')
         self.plot.axes.yaxis.label.set_color('white')
         self.plot.axes.title.set_color('white')
@@ -441,20 +467,24 @@ class ExpButWin(QtWidgets.QGridLayout):
         self.b1.installEventFilter(self)
         self.addWidget(self.b1, 1, 0)
 
-        self.b2 = QtWidgets.QPushButton("Simulate Best")
+        self.b2 = QtWidgets.QPushButton("Parameters Evolution")
         self.b2.installEventFilter(self)
-        self.addWidget(self.b2, 1, 1)
+        self.addWidget(self.b2, 2, 0)
 
-        self.b3 = QtWidgets.QPushButton("Optim Parameters")
+        self.b3 = QtWidgets.QPushButton("Simulate Best")
         self.b3.installEventFilter(self)
-        self.addWidget(self.b3, 1, 2)
+        self.addWidget(self.b3, 1, 1)
+
+        self.b4 = QtWidgets.QPushButton("Optim Parameters")
+        self.b4.installEventFilter(self)
+        self.addWidget(self.b4, 2, 1)
 
     def addLegend(self):
         
         self.l1 = QtWidgets.QLabel()
         self.l1.setText("Optimization Functions")
         self.l1.setAlignment(QtCore.Qt.AlignCenter)
-        self.addWidget(self.l1, 0, 0, 1, 3)
+        self.addWidget(self.l1, 0, 0, 1, 2)
 
     def eventFilter(self, object, event):
 
@@ -483,6 +513,8 @@ class ExpButWin(QtWidgets.QGridLayout):
                 self.win.displayStatus("Display the parameters of the optimization process")
             elif action == "CMA Evolution":
                 self.win.displayStatus("Display the optimization evolution across generations")
+            elif action == "Parameters Evolution":
+                self.win.displayStatus("Display the parameters convergence across generations")
             return True
 
 
