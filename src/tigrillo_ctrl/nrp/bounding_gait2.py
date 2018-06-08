@@ -20,25 +20,25 @@ cpg_conf = control.cpg_config
 runtime = 20
 cpg_conf["Controller"]["runtime"] = 20
 
-phase_offset = [3.7250470724, 0.6334234742,2.8493061809]#
 
-amp_front    = 1985.6925809072
-amp_back     = 1995.2075410257
-o_fr         = 3.7250470724
-o_bl         = 0.6334234742
-o_br         = 2.8493061809
-d0           = 0.8283148999
-d1           = 0.4154217047
-offset_front = 24.4065673858
-offset_back  = -8.1826937714
+amp_front    = 1955.0266213482
+amp_back     = 1917.0506133149
+d0           = 0.8352375546
+d1           = 0.5740384878
+offset_front = 19.6774000857
+offset_back  = -3.4598875792
 omega        = 6.28
 
-o_f          = 0
+o_fl         = 0
+o_fr         = 0
+o_bl         = 1.745401654
+o_br         = 2.8427800803
+
 
 params = "[{'mu': " + str(amp_front) + ","
 params += "'o': " + str(offset_front) + ","
 params += "'duty_factor': " + str(d0) + ","
-params += "'phase_offset': " + str(0) + ","
+params += "'phase_offset': " + str(o_fl) + ","
 params += "'omega': " + str(omega) + ","
 params += "'coupling': [0, 5, 5, 5]}, "
 
@@ -65,6 +65,5 @@ params += "'coupling': [5, 5, 5, 0]}]"
 
 cpg_conf["Controller"]["params"] = params
 
-with open("walking.pkl", "wb") as f:
+with open("bounding.pkl", "wb") as f:
 	pickle.dump(cpg_conf, f)
-

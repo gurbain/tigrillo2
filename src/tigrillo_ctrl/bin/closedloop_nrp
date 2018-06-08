@@ -26,7 +26,7 @@ __status__ = "Research"
 __date__ = "May 3rd, 2018"
 
 TARGET_FILE_NOT_USED = "/home/gabs48/src/quadruped/tigrillo2/src/tigrillo_ctrl/nrp/downsampled_cpg_calibratedT_20Hz.npy"
-REAL_TARGET_FILE = "/home/gabs48/src/quadruped/tigrillo2/src/tigrillo_ctrl/nrp/bounding.pkl"
+REAL_TARGET_FILE = "/home/gabs48/src/quadruped/tigrillo2/src/tigrillo_ctrl/nrp/walking.pkl"
 
 
 if __name__ == '__main__':
@@ -39,8 +39,8 @@ if __name__ == '__main__':
     input_number = 4
     input_memory = 1
     time_step = 0.03
-    ol_time = 40
-    mix_time = 60
+    ol_time = 20
+    mix_time = 120
     cl_learn_time = 0.1
     cl_work_time = 200
     

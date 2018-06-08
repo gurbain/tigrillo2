@@ -41,7 +41,7 @@ if __name__ == '__main__':
     rob.set_sensors_frequency(int(1 / float(config["Controller"]["time_step"])))
 
     # Create a timer to ensure synchro with real-time
-    t = timing.Timer(real_time=True, runtime=float(config["Controller"]["runtime"]), dt=float(config["Controller"]["time_step"]))
+    t = timing.Timer(real_time=True, runtime=float(config["Controller"]["runtime"]*2), dt=float(config["Controller"]["time_step"]))
     t.start()
 
     # Perform experiment
@@ -49,6 +49,8 @@ if __name__ == '__main__':
 
         # Produce actuators control signal
         command = ctl.step(t.st)
+        #command[0] = command[1]
+        #command[2] = command[3]
 
         # Update the robot actuators
         rob.update_actuators(command, t.st)
